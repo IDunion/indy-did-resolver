@@ -1,21 +1,22 @@
 use futures_executor::block_on;
 use indy_vdr::pool::{LocalPool, Pool, PoolBuilder, PoolTransactions, PreparedRequest, RequestResult, TimingResult};
-use std::{fs, io, process};
+use std::fs;
 use std::collections::HashMap;
-use std::ops::Add;
 use indy_vdr::common::error::VdrResult;
 use indy_vdr::pool::helpers::perform_ledger_request;
-use indy_didresolver::did::{did_parse, Did};
-use indy_didresolver::did_document::{DidDocument, Ed25519VerificationKey2018};
+use indy_didresolver::did::did_parse;
+use indy_didresolver::did_document::DidDocument;
 use indy_didresolver::responses::GetNymResult;
 use indy_vdr::utils::did::DidValue;
+use regex::Regex;
 use serde_json::Value;
 use indy_didresolver::error::{DidIndyError, DidIndyResult};
-use rouille::Request;
 use rouille::Response;
+use serde_json::Value::Null;
 
 struct Ledger {
     name: String,
+    //TODO: Source(local,github)
     pool: LocalPool
 }
 
@@ -24,6 +25,46 @@ struct Ledger {
 
 
 fn main() {
+
+    rouille::start_server("0.0.0.0:8080", move |request| {
+        let url = request.url();
+        println!("incoming request: {}",url);
+        let request_regex = Regex::new("/1.0/identifiers/(.*)").expect("Error in the DID Regex Syntax");
+
+        let captures = request_regex.captures(&url);
+        match captures {
+            Some(cap) => {
+                let did = cap.get(1).unwrap().as_str();
+                match process_request( did) {
+                    Ok(did_document) => {
+                        Response::text(did_document)
+                    }
+                    Err(_) => {
+                        Response::text("404").with_status_code(404)
+                    }
+                }
+                //let did_document = process_request( did);
+                //Response::text(did_document)
+            }
+            None => {
+                Response::text("400").with_status_code(400)
+            }
+        }
+    });
+
+    // loop {
+    //     println!("Please provide the requested DID...");
+    //
+    //     let mut request = String::new();
+    //     io::stdin().read_line(&mut request).expect("Failed to read line");
+    //
+    //     process_request(request.as_str());
+    // }
+
+}
+
+fn process_request(request: &str) -> DidIndyResult<String> {
+
     let mut ledgers: HashMap<String, Ledger> = HashMap::new();
     let entries = fs::read_dir("./genesis-files");
     match entries {
@@ -53,25 +94,12 @@ fn main() {
 
     println!("Successfully imported {} Indy Ledgers from Files", ledgers.len());
 
-    loop {
-        println!("Please provide the requested DID...");
-
-        let mut request = String::new();
-        io::stdin().read_line(&mut request).expect("Failed to read line");
-
-        process_request(&ledgers, request);
-    }
-
-}
-
-fn process_request(ledgers: &HashMap<String, Ledger>, request: String) -> String {
-
     let did = match did_parse(request.trim()){
         Ok(did) => {
             did
         },
         Err(DidIndyError) => {
-            panic!(DidIndyError);
+            return Err(DidIndyError);
         }
     };
 
@@ -81,7 +109,7 @@ fn process_request(ledgers: &HashMap<String, Ledger>, request: String) -> String
         }
         None => {
             println!("Requested Indy Namespace \"{}\" unknown", &did.namespace);
-            panic!(DidIndyError);
+            return Err(DidIndyError);
         }
     };
 
@@ -96,7 +124,7 @@ fn process_request(ledgers: &HashMap<String, Ledger>, request: String) -> String
         }
         RequestResult::Failed(error) => {
             println!("Error requesting DID from ledger, {}", error.to_string());
-            panic!(DidIndyError);
+            return Err(DidIndyError);
         }
     };
 
@@ -105,6 +133,9 @@ fn process_request(ledgers: &HashMap<String, Ledger>, request: String) -> String
     println!("result: {:?}", v);
     let data: &Value = &v["result"]["data"];
     println!("data: {:?}", data);
+    if *data == Null {
+        return Err(DidIndyError);
+    }
     let get_nym: GetNymResult = serde_json::from_str(data.as_str().unwrap()).unwrap();
     println!("get_nym: {:?}", get_nym);
 
@@ -113,10 +144,7 @@ fn process_request(ledgers: &HashMap<String, Ledger>, request: String) -> String
 
     println!("DID Document: {}", json);
 
-    return json
-
-
-
+    return Ok(json)
 }
 
 pub async fn request_transaction<T: Pool>(
