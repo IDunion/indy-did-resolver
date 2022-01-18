@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "indy-did-driver",
+    "indy-didresolver",
+]
+
+[profile.release]
+lto = true
+codegen-units = 1
