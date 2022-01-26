@@ -14,6 +14,7 @@ use indy_didresolver::error::{DidIndyError, DidIndyResult};
 use rouille::Response;
 use serde_json::Value::Null;
 
+#[allow(dead_code)]
 struct Ledger {
     name: String,
     //TODO: Source(local,github)
