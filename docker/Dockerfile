@@ -29,8 +29,8 @@ COPY --from=builder /app/indy-did-driver/genesis-files /app/genesis-files
 
 COPY --from=builder /app/licenses.html /app/
 
-#RUN groupadd runner && useradd -r -g runner runner
-#USER runner
+RUN groupadd runner && useradd -r -g runner runner
+USER runner
 
 EXPOSE 8080
 
