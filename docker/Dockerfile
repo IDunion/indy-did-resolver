@@ -25,7 +25,7 @@ USER root
 RUN apt-get update && apt-get install ca-certificates -y && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/indy-did-driver /app/
-COPY --from=builder /app/indy-did-driver/genesis-files /app/
+COPY --from=builder /app/indy-did-driver/genesis-files /app/genesis-files
 
 COPY --from=builder /app/licenses.html /app/
 
@@ -38,4 +38,5 @@ RUN printf "General information about third-party software components and their 
 which are distributed with this image, can be found in the the licenses.html \
 file distributed with this image at /app/licenses.html."
 
+WORKDIR /app
 ENTRYPOINT ["/app/indy-did-driver"]
