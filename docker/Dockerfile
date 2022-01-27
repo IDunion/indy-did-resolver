@@ -15,6 +15,7 @@ WORKDIR /app
 COPY . .
 RUN cargo build --release
 
+# Check licenses and generate report
 RUN cargo install --locked cargo-about
 RUN cargo about generate about.hbs > licenses.html
 
@@ -35,6 +36,6 @@ EXPOSE 8080
 
 RUN printf "General information about third-party software components and their licenses, \
 which are distributed with this image, can be found in the the licenses.html \
-file distributed with this image at /app/licenses.html."\
+file distributed with this image at /app/licenses.html."
 
 ENTRYPOINT ["/app/indy-did-driver"]
