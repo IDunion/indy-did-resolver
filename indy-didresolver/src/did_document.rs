@@ -24,12 +24,21 @@ pub struct DidDocument {
     verkey : String,
 }
 
+pub fn expand_verkey(id: &str, verkey: &str) -> String {
+    let mut verkey_cpy = verkey.to_string();
+    if verkey_cpy.starts_with('~') {
+        verkey_cpy.remove(0);
+        return format!("{}{}", id.to_string(), verkey_cpy);
+    }
+    return verkey_cpy;
+}
+
 impl DidDocument {
     pub fn new(namespace: &str, id : &str, verkey : &str) -> Self {
         DidDocument {
             namespace: namespace.to_string(),
             id: id.to_string(),
-            verkey: verkey.to_string(),
+            verkey: expand_verkey(id, verkey),
         }
     }
 
