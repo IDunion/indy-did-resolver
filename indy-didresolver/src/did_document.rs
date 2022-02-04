@@ -25,12 +25,11 @@ pub struct DidDocument {
 }
 
 pub fn expand_verkey(id: &str, verkey: &str) -> String {
-    let mut verkey_cpy = verkey.to_string();
-    if verkey_cpy.starts_with('~') {
-        verkey_cpy.remove(0);
-        return format!("{}{}", id.to_string(), verkey_cpy);
+    if verkey.starts_with('~') {
+        format!("{}{}", id, &verkey[1..])
+    } else {
+        verkey.to_string()
     }
-    return verkey_cpy;
 }
 
 impl DidDocument {

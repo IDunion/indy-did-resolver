@@ -38,7 +38,6 @@ pub fn did_parse(did: &str) -> DidIndyResult<Did> {
 #[cfg(test)]
 mod tests {
     mod did_syntax_tests {
-        use crate::Did;
         use crate::did::{Did, did_parse, Type};
 
         #[test]
