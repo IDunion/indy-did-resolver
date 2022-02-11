@@ -52,7 +52,7 @@ impl<T: Pool> Resolver<T> {
         let did_value = DidValue::new(&did.id, Option::None);
 
         let request = match path {
-            Some(path) => match LedgerObject::from_str(path.as_str()).unwrap() {
+            Some(path) => match LedgerObject::from_str(path.as_str())? {
                 LedgerObject::ClaimDef(claim_def) => builder
                     .build_get_cred_def_request(
                         Option::None,
@@ -70,7 +70,8 @@ impl<T: Pool> Resolver<T> {
                         &SchemaId(format!("{}{}", schema.name, schema.version)),
                     )
                     .unwrap(),
-                _ => unimplemented!("Arms not implemented yet"),
+                LedgerObject::RevRegDef(_) => unimplemented!("Arm not implemented yet"),
+                LedgerObject::RevRegEntry(_) => unimplemented!("Arm not implemented yet"),
             },
             None => builder
                 .build_get_nym_request(Option::None, &did_value)
