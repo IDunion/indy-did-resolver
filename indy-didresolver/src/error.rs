@@ -12,6 +12,8 @@ pub enum DidIndyError {
     NamespaceNotSupported,
     #[error("Object not found")]
     NotFound,
+    #[error("Function not implemented")]
+    NotImplemented,
     #[error("VDR error")]
     VDR(#[from] VdrError ),
     #[error("Unkown error")]

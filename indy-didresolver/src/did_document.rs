@@ -92,7 +92,7 @@ impl DidDocument {
     pub fn to_string(&self) -> String {
         let mut doc = json!({
              "id": format!("did:indy:{}:{}", self.namespace, self.id),
-            "verification_method": [Ed25519VerificationKey2018 {
+            "verificationMethod": [Ed25519VerificationKey2018 {
                 id: format!("did:indy:{}:{}#keys-1", self.namespace, self.id),
                 type_: format!("Ed25519VerificationKey2018"),
                 controller: format!("did:indy:{}:{}", self.namespace, self.id),
@@ -104,7 +104,7 @@ impl DidDocument {
         if self.diddoc_content.is_some() {
             //TODO: merge base doc with diddoc content
         
-        // Handling of legacy endpoints
+        // Handling of legacy services
         } else if self.endpoint.is_some() {
             let mut services = Vec::new();
             let endpoints = self.endpoint.clone();

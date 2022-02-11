@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use futures_executor::block_on;
-use indy_vdr::utils::Qualifiable;
 use serde_json::Value;
 
 use super::did::{did_parse, LedgerObject};
@@ -9,9 +8,9 @@ use super::did_document::{DidDocument, LEGACY_INDY_SERVICE};
 use super::error::DidIndyError;
 use super::responses::{Endpoint, GetNymResultV1};
 
-use indy_vdr::common::error::VdrResult;
+use indy_vdr::common::error::{VdrError, VdrErrorKind, VdrResult};
 use indy_vdr::ledger::constants::GET_NYM;
-use indy_vdr::ledger::identifiers::{CredentialDefinitionId, SchemaId};
+use indy_vdr::ledger::identifiers::SchemaId;
 use indy_vdr::pool::helpers::perform_ledger_request;
 use indy_vdr::pool::{Pool, PreparedRequest, RequestResult, TimingResult};
 use indy_vdr::utils::did::DidValue;
@@ -99,34 +98,34 @@ impl<T: Pool> Resolver<T> {
         let builder = self.pool.get_request_builder();
         let request = match path {
             Some(path) => match LedgerObject::from_str(path)? {
-                LedgerObject::ClaimDef(claim_def) => builder
-                    .build_get_cred_def_request(
-                        Option::None,
-                        &(CredentialDefinitionId::new(
-                            &did.to_unqualified(),
-                            &SchemaId(claim_def.schema_id),
-                            "CL",
-                            &claim_def.name,
-                        )),
-                    )
-                    .unwrap(),
-                LedgerObject::Schema(schema) => builder
-                    .build_get_schema_request(
-                        Option::None,
-                        &SchemaId(format!("{}{}", schema.name, schema.version)),
-                    )
-                    .unwrap(),
-                LedgerObject::RevRegDef(_) => unimplemented!("Arm not implemented yet"),
-                LedgerObject::RevRegEntry(_) => unimplemented!("Arm not implemented yet"),
+                LedgerObject::Schema(schema) => builder.build_get_schema_request(
+                    Option::None,
+                    &SchemaId::new(&did, &schema.name, &schema.version),
+                ),
+                LedgerObject::ClaimDef(_) => Err(VdrError::new(
+                    VdrErrorKind::Incompatible,
+                    Some(String::from("Not implemented")),
+                    None,
+                )),
+                LedgerObject::RevRegDef(_) => Err(VdrError::new(
+                    VdrErrorKind::Incompatible,
+                    Some(String::from("Not implemented")),
+                    None,
+                )),
+                LedgerObject::RevRegEntry(_) => Err(VdrError::new(
+                    VdrErrorKind::Incompatible,
+                    Some(String::from("Not implemented")),
+                    None,
+                )),
             },
-            None => builder.build_get_nym_request(Option::None, &did).unwrap(),
+            None => builder.build_get_nym_request(Option::None, &did),
         };
-        Ok(request)
+        request.map_err(|e| DidIndyError::from(e))
     }
 }
 
 fn handle_request<T: Pool>(pool: &T, request: &PreparedRequest) -> Result<String, DidIndyError> {
-    let (result, _timing) = block_on(request_transaction(pool, &request)).unwrap();
+    let (result, _timing) = block_on(request_transaction(pool, &request))?;
     match result {
         RequestResult::Reply(data) => Ok(data),
         RequestResult::Failed(error) => {
