@@ -112,21 +112,21 @@ impl FromStr for LedgerObject {
             println!("{:?}", cap);
             match cap.get(1).unwrap().as_str() {
                 "SCHEMA" => Ok(LedgerObject::Schema(Schema::new(
-                    cap.get(2).ok_or(DidIndyError)?.as_str().to_string(),
-                    cap.get(3).ok_or(DidIndyError)?.as_str().to_string(),
+                    cap.get(2).ok_or(DidIndyError::Unknown)?.as_str().to_string(),
+                    cap.get(3).ok_or(DidIndyError::Unknown)?.as_str().to_string(),
                 ))),
                 "CLAIM_DEF" => Ok(LedgerObject::ClaimDef(ClaimDef::new(
-                    cap.get(2).ok_or(DidIndyError)?.as_str().to_string(),
-                    cap.get(3).ok_or(DidIndyError)?.as_str().to_string(),
+                    cap.get(2).ok_or(DidIndyError::Unknown)?.as_str().to_string(),
+                    cap.get(3).ok_or(DidIndyError::Unknown)?.as_str().to_string(),
                 ))),
                 "REV_REG_DEF" => unimplemented!("Not yet completed"),
                 "REV_REG_ENTRY" => unimplemented!("Not yet completed"),
 
-                _ => Err(DidIndyError),
+                _ => Err(DidIndyError::Unknown),
             }
         } else {
             println!("Requested DID does not match the W3C DID-core standard.");
-            Err(DidIndyError)
+            Err(DidIndyError::Unknown)
         }
     }
 }
@@ -156,7 +156,7 @@ pub fn did_parse(did: &str) -> DidIndyResult<Did> {
         }
         None => {
             println!("Requested DID does not match the W3C DID-core standard.");
-            Err(DidIndyError)
+            Err(DidIndyError::Unknown)
         }
     };
 }
@@ -167,10 +167,10 @@ mod tests {
 
     #[test]
     fn parse_unknown_ledger_object_fails() {
-        assert_eq!(
+        assert!(matches!(
             LedgerObject::from_str("/PANTS/npdb/4.3.4"),
             Err(DidIndyError)
-        )
+        ))
     }
 
     #[test]

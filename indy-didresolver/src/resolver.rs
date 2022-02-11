@@ -5,9 +5,9 @@ use indy_vdr::utils::Qualifiable;
 use serde_json::Value;
 
 use super::did::{did_parse, LedgerObject};
-use super::did_document::DidDocument;
+use super::did_document::{DidDocument, LEGACY_INDY_SERVICE};
 use super::error::DidIndyError;
-use super::responses::GetNymResult;
+use super::responses::{Endpoint, GetNymResultV1};
 
 use indy_vdr::common::error::VdrResult;
 use indy_vdr::ledger::constants::GET_NYM;
@@ -31,12 +31,7 @@ impl<T: Pool> Resolver<T> {
         let did_url = did::DIDURL::try_from(String::from(did)).expect("Could not parse DID URL");
 
         let did = did_url.did;
-        let did = match did_parse(did.as_str()) {
-            Ok(did) => did,
-            Err(DidIndyError) => {
-                return Err(DidIndyError);
-            }
-        };
+        let did = did_parse(did.as_str())?;
 
         // The path variable identifies the requested ledger object
         // If there is no path, then we return a DID document
@@ -46,33 +41,54 @@ impl<T: Pool> Resolver<T> {
             None
         };
 
-        println!("{:?}", path);
-
         let did_value = DidValue::new(&did.id, Option::None);
 
         let request = self.build_request(&did_value, path)?;
 
         let ledger_data = handle_request(&self.pool, &request)?;
+        let data = parse_ledger_data(&ledger_data)?;
 
-        let v: Value = serde_json::from_str(&ledger_data).unwrap();
-        println!("result: {:?}", v);
-        let data: &Value = &v["result"]["data"];
-        println!("data: {:?}", data);
-        if *data == Value::Null {
-            return Err(DidIndyError);
-        }
         let result = match request.txn_type.as_str() {
             GET_NYM => {
-                let get_nym_result: GetNymResult =
-                    serde_json::from_str(data.as_str().unwrap()).unwrap();
-                let did_document =
-                    DidDocument::new(&did.namespace, &get_nym_result.dest, &get_nym_result.verkey);
+                let get_nym_result: GetNymResultV1 = serde_json::from_str(data.as_str().unwrap())?;
+
+                println!("{:#?}", get_nym_result);
+
+                let endpoint: Option<Endpoint> = if get_nym_result.diddoc_content.is_none() {
+                    // Legacy: Try to find an attached ATTRIBUTE transacation with raw endpoint
+                    self.fetch_legacy_endpoint(&did_value).ok()
+                } else {
+                    None
+                };
+
+                let did_document = DidDocument::new(
+                    &did.namespace,
+                    &get_nym_result.dest,
+                    &get_nym_result.verkey,
+                    endpoint,
+                    None,
+                );
                 did_document.to_string()
             }
             _ => data.to_string(),
         };
 
         Ok(result)
+    }
+
+    fn fetch_legacy_endpoint(&self, did: &DidValue) -> Result<Endpoint, DidIndyError> {
+        let builder = self.pool.get_request_builder();
+        let request = builder.build_get_attrib_request(
+            None,
+            did,
+            Some(String::from(LEGACY_INDY_SERVICE)),
+            None,
+            None,
+        )?;
+        let ledger_data = handle_request(&self.pool, &request)?;
+        let endpoint_data = parse_ledger_data(&ledger_data)?;
+        let endpoint_data: Endpoint = serde_json::from_str(endpoint_data.as_str().unwrap())?;
+        Ok(endpoint_data)
     }
 
     fn build_request(
@@ -103,9 +119,7 @@ impl<T: Pool> Resolver<T> {
                 LedgerObject::RevRegDef(_) => unimplemented!("Arm not implemented yet"),
                 LedgerObject::RevRegEntry(_) => unimplemented!("Arm not implemented yet"),
             },
-            None => builder
-                .build_get_nym_request(Option::None, &did)
-                .unwrap(),
+            None => builder.build_get_nym_request(Option::None, &did).unwrap(),
         };
         Ok(request)
     }
@@ -117,7 +131,7 @@ fn handle_request<T: Pool>(pool: &T, request: &PreparedRequest) -> Result<String
         RequestResult::Reply(data) => Ok(data),
         RequestResult::Failed(error) => {
             println!("Error requesting data from ledger, {}", error.to_string());
-            Err(DidIndyError)
+            Err(DidIndyError::Unknown)
         }
     }
 }
@@ -127,4 +141,13 @@ async fn request_transaction<T: Pool>(
     request: &PreparedRequest,
 ) -> VdrResult<(RequestResult<String>, Option<TimingResult>)> {
     perform_ledger_request(pool, &request).await
+}
+
+fn parse_ledger_data(ledger_data: &str) -> Result<Value, DidIndyError> {
+    let v: Value = serde_json::from_str(&ledger_data)?;
+    let data: &Value = &v["result"]["data"];
+    if *data == Value::Null {
+        return Err(DidIndyError::Unknown);
+    }
+    Ok(data.to_owned())
 }

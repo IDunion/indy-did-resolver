@@ -1,10 +1,8 @@
 use git2::Repository;
-use indy_didresolver::did::{did_parse};
+use indy_didresolver::did::did_parse;
 use indy_didresolver::error::{DidIndyError, DidIndyResult};
 use indy_didresolver::resolver::Resolver;
-use indy_vdr::pool::{
-    PoolBuilder, PoolTransactions, SharedPool,
-};
+use indy_vdr::pool::{PoolBuilder, PoolTransactions, SharedPool};
 use regex::Regex;
 use rouille::Response;
 
@@ -36,12 +34,13 @@ fn main() {
         if let Some(cap) = captures {
             let did = cap.get(1).unwrap().as_str();
 
-            if let Ok(did_document) = process_request(did, &resolvers) {
-                Response::text(did_document)
-            } else {
-                Response::text("404").with_status_code(404)
+            match process_request(did, &resolvers) {
+                Ok(did_doc) => Response::text(did_doc),
+                Err(err) => {
+                    println!("{:?}",err);
+                    Response::text("404").with_status_code(404)
+                }
             }
-            
         } else {
             Response::text("400").with_status_code(400)
         }
@@ -107,19 +106,12 @@ fn init_resolvers(source: &str) -> Resolvers {
 }
 
 fn process_request(request: &str, resolvers: &Resolvers) -> DidIndyResult<String> {
-
-    let did = match did_parse(request) {
-        Ok(did) => did,
-        Err(DidIndyError) => {
-            return Err(DidIndyError);
-        }
-    };
-
+    let did = did_parse(request)?;
     let resolver = if let Some(resolver) = resolvers.get(&did.namespace) {
         resolver
     } else {
         println!("Requested Indy Namespace \"{}\" unknown", &did.namespace);
-        return Err(DidIndyError);
+        return Err(DidIndyError::NamespaceNotSupported);
     };
 
     resolver.resolve(request)
