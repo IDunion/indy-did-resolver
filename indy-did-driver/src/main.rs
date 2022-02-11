@@ -1,21 +1,16 @@
-use futures_executor::block_on;
 use git2::Repository;
 use indy_didresolver::did::{did_parse};
 use indy_didresolver::error::{DidIndyError, DidIndyResult};
 use indy_didresolver::resolver::Resolver;
 use indy_vdr::pool::{
-    Pool, PoolBuilder, PoolTransactions, PreparedRequest, RequestResult, SharedPool, TimingResult,
+    PoolBuilder, PoolTransactions, SharedPool,
 };
-use indy_vdr::utils::did::DidValue;
 use regex::Regex;
 use rouille::Response;
-use serde_json::Value;
-use serde_json::Value::Null;
+
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::fs;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 static PORT: &str = "8081";
 static POOL_SIZE: Option<usize> = Some(32);

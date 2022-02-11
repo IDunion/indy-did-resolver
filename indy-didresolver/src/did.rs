@@ -1,5 +1,5 @@
 use crate::error::{DidIndyError, DidIndyResult};
-use regex::{Error as RegexError, Regex};
+use regex::Regex;
 
 use std::str::FromStr;
 
@@ -59,6 +59,7 @@ pub struct RevRegDef {
     type_: u8,
 }
 
+#[allow(dead_code)]
 impl RevRegDef {
     fn new(name: String, claim_def_name: String) -> Self {
         Self {
@@ -76,6 +77,7 @@ pub struct RevRegEntry {
     type_: u8,
 }
 
+#[allow(dead_code)]
 impl RevRegEntry {
     fn new(rev_reg_name: String, claim_def_name: String) -> Self {
         Self {
@@ -86,26 +88,23 @@ impl RevRegEntry {
     }
 }
 
-// Todo: Implement
-#[derive(Debug, PartialEq)]
-pub struct Attrib;
-
 #[derive(Debug, PartialEq)]
 pub enum LedgerObject {
     Schema(Schema),
     ClaimDef(ClaimDef),
     RevRegDef(RevRegDef),
     RevRegEntry(RevRegEntry),
-    Attrib,
 }
 
 impl FromStr for LedgerObject {
-    type Err = RegexError;
+    type Err = DidIndyError;
 
     fn from_str(input: &str) -> Result<LedgerObject, Self::Err> {
-        println!("Inside LO");
-        // let re = Regex::new(r"^/(SCHEMA|CLAIM_DEF)/([a-zA-Z]*)/?((?:\d\.){1,2}\d)?$").unwrap();
-        let re = Regex::new(r"^/(SCHEMA|CLAIM_DEF)/([a-zA-Z0-9_:]*)/?((?:\d\.){1,2}\d)?$").unwrap();
+        // let re = Regex::new(r"^/(SCHEMA|CLAIM_DEF|REV_REG_DEF|REV_REG_ENTRY)/([a-zA-Z]*)/?((?:\d\.){1,2}\d)?$").unwrap();
+        let re = Regex::new(
+            r"^/(SCHEMA|CLAIM_DEF|REV_REG_DEF|REV_REG_ENTRY)/([a-zA-Z0-9_:]*)/?((?:\d\.){1,2}\d)?$",
+        )
+        .unwrap();
 
         let captures = re.captures(input);
 
@@ -113,19 +112,21 @@ impl FromStr for LedgerObject {
             println!("{:?}", cap);
             match cap.get(1).unwrap().as_str() {
                 "SCHEMA" => Ok(LedgerObject::Schema(Schema::new(
-                    cap.get(2).unwrap().as_str().to_string(),
-                    cap.get(3).unwrap().as_str().to_string(),
+                    cap.get(2).ok_or(DidIndyError)?.as_str().to_string(),
+                    cap.get(3).ok_or(DidIndyError)?.as_str().to_string(),
                 ))),
                 "CLAIM_DEF" => Ok(LedgerObject::ClaimDef(ClaimDef::new(
-                    cap.get(2).unwrap().as_str().to_string(),
-                    cap.get(3).unwrap().as_str().to_string(),
+                    cap.get(2).ok_or(DidIndyError)?.as_str().to_string(),
+                    cap.get(3).ok_or(DidIndyError)?.as_str().to_string(),
                 ))),
+                "REV_REG_DEF" => unimplemented!("Not yet completed"),
+                "REV_REG_ENTRY" => unimplemented!("Not yet completed"),
 
-                _ => unimplemented!("Not yet completed"),
+                _ => Err(DidIndyError),
             }
         } else {
             println!("Requested DID does not match the W3C DID-core standard.");
-            Err(RegexError::__Nonexhaustive)
+            Err(DidIndyError)
         }
     }
 }
@@ -162,6 +163,47 @@ pub fn did_parse(did: &str) -> DidIndyResult<Did> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_unknown_ledger_object_fails() {
+        assert_eq!(
+            LedgerObject::from_str("/PANTS/npdb/4.3.4"),
+            Err(DidIndyError)
+        )
+    }
+
+    #[test]
+    fn parse_to_schema() {
+        assert_eq!(
+            LedgerObject::from_str("/SCHEMA/npdb/4.3.4").unwrap(),
+            LedgerObject::Schema(Schema::new(String::from("npdb"), String::from("4.3.4")))
+        )
+    }
+
+    #[test]
+    fn parse_to_schema_two_digit_version() {
+        assert_eq!(
+            LedgerObject::from_str("/SCHEMA/npdb/4.3").unwrap(),
+            LedgerObject::Schema(Schema::new(String::from("npdb"), String::from("4.3")))
+        )
+    }
+
+    #[test]
+    fn parse_to_schema_without_version_fails() {
+        assert!(matches!(
+            LedgerObject::from_str("/SCHEMA/npdb"),
+            Err(DidIndyError)
+        ))
+    }
+
+    #[test]
+    fn parse_to_schema_wit_one_digit_version_fails() {
+        assert!(matches!(
+            LedgerObject::from_str("/SCHEMA/npdb/4"),
+            Err(DidIndyError)
+        ))
+    }
     mod did_syntax_tests {
         use crate::did::{did_parse, Did, Type};
 

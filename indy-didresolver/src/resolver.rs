@@ -6,8 +6,8 @@ use serde_json::Value;
 
 use super::did::{did_parse, LedgerObject};
 use super::did_document::DidDocument;
-use super::error::{DidIndyError, DidIndyResult};
-use super::responses::{GetNymResult, GetSchemaResult, ResponseTypes};
+use super::error::{DidIndyError};
+use super::responses::{GetNymResult};
 
 use indy_vdr::common::error::VdrResult;
 use indy_vdr::ledger::constants::{GET_NYM};
