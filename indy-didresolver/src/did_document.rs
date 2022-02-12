@@ -29,6 +29,7 @@ pub struct DidCommService {
     pub type_: String,
     pub recipient_keys: Vec<String>,
     pub routing_keys: Vec<String>,
+    pub priority: u8,
 }
 
 impl DidCommService {
@@ -38,6 +39,7 @@ impl DidCommService {
             type_: "did-communication".to_string(),
             recipient_keys,
             routing_keys,
+            priority: 0,
         }
     }
 }
@@ -103,8 +105,8 @@ impl DidDocument {
 
         if self.diddoc_content.is_some() {
             //TODO: merge base doc with diddoc content
-        
-        // Handling of legacy services
+
+            // Handling of legacy services
         } else if self.endpoint.is_some() {
             let mut services = Vec::new();
             let endpoints = self.endpoint.clone();
@@ -125,13 +127,141 @@ impl DidDocument {
             }
 
             if let Value::Object(ref mut map) = doc {
-                map.insert(
-                    "service".to_string(),
-                    serde_json::Value::Array(services)
-                );
+                map.insert("service".to_string(), serde_json::Value::Array(services));
             }
         }
 
         serde_json::to_string_pretty(&doc).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+
+    #[test]
+    fn serialze_diddoc_without_diddoc_content() {
+        let doc = DidDocument::new(
+            "idunion",
+            "QowxFtwciWceMFr7WbwnM",
+            "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
+            None,
+            None,
+        );
+
+        let serialized = json!({
+            "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+            "verificationMethod": [{
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "type": "Ed25519VerificationKey2018",
+                "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+                "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
+            }],
+            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+        });
+
+        // Need to compare serde value instead of string, since elements might be in
+        // different order.
+
+        let v_from_doc: Value = serde_json::from_str(doc.to_string().as_str()).unwrap();
+        let v_from_serialized: Value =
+            serde_json::from_str(serde_json::to_string(&serialized).unwrap().as_str()).unwrap();
+
+        assert_eq!(v_from_doc, v_from_serialized)
+    }
+
+    #[test]
+    fn serialze_diddoc_with_diddoc_content() {}
+
+    #[test]
+    fn serialze_diddoc_with_legacy_did_comm_endpoint() {
+        let mut endpoint_map: HashMap<String, String> = HashMap::new();
+        endpoint_map.insert(String::from("endpoint"), String::from("https://agent.com"));
+
+        let doc = DidDocument::new(
+            "idunion",
+            "QowxFtwciWceMFr7WbwnM",
+            "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
+            Some(Endpoint {
+                endpoint: endpoint_map,
+            }),
+            None,
+        );
+
+        let serialized = json!({
+            "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+            "verificationMethod": [{
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "type": "Ed25519VerificationKey2018",
+                "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+                "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
+            }],
+            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+            "service": [{
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
+                "type": "did-communication",
+                "recipientKeys": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+                "routingKeys": [],
+                "priority": 0
+            }]
+
+        });
+
+        let v_from_doc: Value = serde_json::from_str(doc.to_string().as_str()).unwrap();
+        let v_from_serialized: Value =
+            serde_json::from_str(serde_json::to_string(&serialized).unwrap().as_str()).unwrap();
+
+        assert_eq!(v_from_doc, v_from_serialized)
+    }
+
+    #[test]
+    fn serialze_diddoc_with_multiple_legacy_endpoints() {
+        let mut endpoint_map: HashMap<String, String> = HashMap::new();
+        endpoint_map.insert(String::from("endpoint"), String::from("https://agent.com"));
+        endpoint_map.insert(
+            String::from("profile"),
+            String::from("https://agent.com/profile"),
+        );
+
+        let doc = DidDocument::new(
+            "idunion",
+            "QowxFtwciWceMFr7WbwnM",
+            "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
+            Some(Endpoint {
+                endpoint: endpoint_map,
+            }),
+            None,
+        );
+
+        let serialized = json!({
+            "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+            "verificationMethod": [{
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "type": "Ed25519VerificationKey2018",
+                "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+                "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
+            }],
+            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+            "service": [{
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
+                "type": "did-communication",
+                "recipientKeys": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+                "routingKeys": [],
+                "priority": 0
+            }, {
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#profile",
+                "type": "profile",
+                "serviceEndpoint": "https://agent.com/profile",
+            }]
+
+        });
+
+        let v_from_doc: Value = serde_json::from_str(doc.to_string().as_str()).unwrap();
+        let v_from_serialized: Value =
+            serde_json::from_str(serde_json::to_string(&serialized).unwrap().as_str()).unwrap();
+
+        assert_eq!(v_from_doc, v_from_serialized)
     }
 }
