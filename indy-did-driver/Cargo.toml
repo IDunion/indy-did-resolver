@@ -9,6 +9,7 @@ license = "Apache-2.0"
 
 [dependencies]
 futures-executor = "0.3.17"
+git2 = "0.13"
 indy-didresolver = { path = "../indy-didresolver" , version = "0.1.0" }
 #indy-vdr = { path = "../../indy-vdr/libindy_vdr" , version = "0.3.4" }
 indy-vdr = "0.3.4"

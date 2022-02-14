@@ -2,7 +2,7 @@ use std::fmt;
 
 pub type DidIndyResult<T> = std::result::Result<T, DidIndyError>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DidIndyError;
 
 impl fmt::Display for DidIndyError {
