@@ -67,7 +67,7 @@ impl<T: Pool> Resolver<T> {
                     endpoint,
                     None,
                 );
-                did_document.to_string()
+                did_document.to_string()?
             }
             _ => data.to_string(),
         };
