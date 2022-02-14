@@ -1,6 +1,4 @@
-use std::ops::Deref;
-
-use super::error::{DidIndyError, DidIndyResult};
+use super::error::{DidIndyError};
 use super::responses::Endpoint;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
