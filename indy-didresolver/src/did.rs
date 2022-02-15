@@ -198,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_to_schema_wit_one_digit_version_fails() {
+    fn parse_to_schema_with_one_digit_version_fails() {
         assert!(matches!(
             LedgerObject::from_str("/SCHEMA/npdb/4"),
             Err(DidIndyError::Unknown)

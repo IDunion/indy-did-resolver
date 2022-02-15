@@ -1,4 +1,4 @@
-use super::error::{DidIndyError};
+use super::error::DidIndyError;
 use super::responses::Endpoint;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -175,13 +175,12 @@ fn validate_diddoc_content(diddoc_content: &Value) -> bool {
 
 fn merge_diddoc(base: &mut Value, content: &Value) {
     match (base, content) {
-        (base @ &mut Value::Object(_), Value::Object(content)) => {
-            let base = base.as_object_mut().unwrap();
+        (Value::Object(base), Value::Object(content)) => {
             for (k, v) in content {
-                if v.is_array() && base.contains_key(k) && base[k].is_array() {
-                    let mut _base = base[k].as_array().unwrap().to_owned();
-                    _base.append(&mut v.as_array().unwrap().to_owned());
-                    base[k] = Value::from(_base);
+                if k == "authentication" || k == "verificationMethod" {
+                    let mut _tmp = base[k].as_array().unwrap().to_owned();
+                    _tmp.append(&mut v.as_array().unwrap_or(&vec![v.to_owned()]).to_owned());
+                    base[k] = Value::from(_tmp);
                 } else {
                     merge_diddoc(base.entry(k).or_insert(Value::Null), v);
                 }
@@ -338,6 +337,77 @@ mod tests {
             "authentication": [
                 "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
                 "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-2"],
+                "service": [{
+                    "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
+                    "type": "did-communication",
+                    "serviceEndpoint": "https://example.com",
+                    "recipientKeys": [ "#keys-1" ],
+                    "routingKeys": [],
+                    "priority": 0
+                }]
+
+        });
+
+        let v_from_doc: Value = serde_json::from_str(doc.to_string().unwrap().as_str()).unwrap();
+        let v_from_serialized: Value =
+            serde_json::from_str(serde_json::to_string(&serialized).unwrap().as_str()).unwrap();
+
+        assert_eq!(v_from_doc, v_from_serialized)
+    }
+
+    #[test]
+    fn serialze_diddoc_with_diddoc_content_with_additional_auth_as_string() {
+        let diddoc_content = json!({
+        "@context" : [
+            "https://www.w3.org/ns/did/v1",
+            "https://identity.foundation/didcomm-messaging/service-endpoint/v1"
+        ],
+        "verificationMethod": [{
+            "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-2",
+            "type": "Ed25519VerificationKey2018",
+            "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+            "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBc",
+        }],
+        "authentication": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-2",
+        "service": [{
+            "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
+            "type": "did-communication",
+            "serviceEndpoint": "https://example.com",
+            "recipientKeys": [ "#keys-1" ],
+            "routingKeys": [],
+            "priority": 0
+        }]
+        });
+
+        let doc = DidDocument::new(
+            "idunion",
+            "QowxFtwciWceMFr7WbwnM",
+            "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
+            None,
+            Some(diddoc_content),
+        );
+
+        let serialized = json!({
+            "@context": [
+              "https://www.w3.org/ns/did/v1",
+               "https://identity.foundation/didcomm-messaging/service-endpoint/v1"
+            ],
+            "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+            "verificationMethod": [{
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "type": "Ed25519VerificationKey2018",
+                "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+                "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
+            },{
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-2",
+                "type": "Ed25519VerificationKey2018",
+                "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
+                "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBc",
+            }],
+            "authentication": [
+                "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-2"
+                ],
                 "service": [{
                     "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
                     "type": "did-communication",
