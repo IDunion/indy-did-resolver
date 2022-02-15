@@ -1,4 +1,4 @@
-use crate::error::{DidIndyError, DidIndyResult};
+use super::error::{DidIndyError, DidIndyResult};
 use regex::Regex;
 
 use std::str::FromStr;
@@ -169,7 +169,7 @@ mod tests {
     fn parse_unknown_ledger_object_fails() {
         assert!(matches!(
             LedgerObject::from_str("/PANTS/npdb/4.3.4"),
-            Err(DidIndyError)
+            Err(DidIndyError::Unknown)
         ))
     }
 
@@ -193,7 +193,7 @@ mod tests {
     fn parse_to_schema_without_version_fails() {
         assert!(matches!(
             LedgerObject::from_str("/SCHEMA/npdb"),
-            Err(DidIndyError)
+            Err(DidIndyError::Unknown)
         ))
     }
 
@@ -201,7 +201,7 @@ mod tests {
     fn parse_to_schema_wit_one_digit_version_fails() {
         assert!(matches!(
             LedgerObject::from_str("/SCHEMA/npdb/4"),
-            Err(DidIndyError)
+            Err(DidIndyError::Unknown)
         ))
     }
     mod did_syntax_tests {
