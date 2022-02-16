@@ -1,13 +1,14 @@
 use thiserror::Error;
 use indy_vdr::common::error::VdrError;
 
-
 pub type DidIndyResult<T> = std::result::Result<T, DidIndyError>;
 
 #[derive(Debug, Error)]
 pub enum DidIndyError {
     #[error("Parsing error")]
     ParsingError(#[from] serde_json::Error),
+    #[error("Could not parse datetime")]
+    DateTimeError(#[from] chrono::ParseError ),
     #[error("Namespace not supported")]
     NamespaceNotSupported,
     #[error("Query parameter not supported")]

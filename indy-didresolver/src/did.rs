@@ -18,8 +18,8 @@ impl QueryParameter {
         match input {
             "versionId" => Ok(QueryParameter::VersionId),
             "versionTime" => Ok(QueryParameter::VersionTime),
-            "From" => Ok(QueryParameter::From),
-            "To" => Ok(QueryParameter::To),
+            "from" => Ok(QueryParameter::From),
+            "to" => Ok(QueryParameter::To),
             _ => Err(DidIndyError::QueryParameterNotSupported),
         }
     }
@@ -183,29 +183,57 @@ impl RevRegDef {
     }
 }
 
-// #[derive(Debug, PartialEq)]
-// pub struct RevRegEntry {
-//     rev_reg_name: String,
-//     claim_def_name: String,
-//     type_: u8,
-// }
+#[derive(Debug, PartialEq)]
+pub struct RevRegEntry {
+    pub schema_seq_no: u32,
+    pub claim_def_name: String,
+    pub tag: String,
+    type_: u8,
+}
 
-// #[allow(dead_code)]
-// impl RevRegEntry {
-//     fn new(rev_reg_name: String, claim_def_name: String) -> Self {
-//         Self {
-//             rev_reg_name,
-//             claim_def_name,
-//             type_: ObjectCodes::RevRegEntry as u8,
-//         }
-//     }
-// }
+impl RevRegEntry {
+    fn new(schema_seq_no: u32, claim_def_name: String, tag: String) -> Self {
+        Self {
+            schema_seq_no,
+            claim_def_name,
+            tag,
+            type_: ObjectCodes::RevRegDef as u8,
+        }
+    }
+
+    fn from_str(input: &str) -> DidIndyResult<RevRegEntry> {
+        let re = Regex::new(r"^([0-9]*)/([a-zA-Z0-9_-]?*)/([a-zA-Z0-9._-]?*)$").unwrap();
+
+        let captures = re.captures(input);
+
+        match captures {
+            Some(cap) => Ok(RevRegEntry::new(
+                cap.get(1)
+                    .ok_or(DidIndyError::InvalidDidUrl)?
+                    .as_str()
+                    .to_string()
+                    .parse::<u32>()
+                    .unwrap(),
+                cap.get(2)
+                    .ok_or(DidIndyError::InvalidDidUrl)?
+                    .as_str()
+                    .to_string(),
+                cap.get(3)
+                    .ok_or(DidIndyError::InvalidDidUrl)?
+                    .as_str()
+                    .to_string(),
+            )),
+            _ => Err(DidIndyError::InvalidDidUrl),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum LedgerObject {
     Schema(Schema),
     ClaimDef(ClaimDef),
     RevRegDef(RevRegDef),
+    RevRegEntry(RevRegEntry),
 }
 
 impl LedgerObject {
@@ -242,7 +270,9 @@ impl LedgerObject {
                                 "REV_REG_DEF" => Ok(LedgerObject::RevRegDef(RevRegDef::from_str(
                                     ledger_object_type_specific_str,
                                 )?)),
-                                "REV_REG_ENTRY" => unimplemented!("Not yet completed"),
+                                "REV_REG_ENTRY" => Ok(LedgerObject::RevRegEntry(
+                                    RevRegEntry::from_str(ledger_object_type_specific_str)?,
+                                )),
 
                                 _ => Err(DidIndyError::InvalidDidUrl),
                             }
@@ -387,8 +417,15 @@ mod tests {
     #[test]
     fn parse_to_rev_reg_def() {
         assert_eq!(
-            LedgerObject::from_str("/anoncreds/v0/REV_REG_DEF/104/revocable/a4e25e54-e028-462b-a4d6-b1d1712d51a1").unwrap(),
-            LedgerObject::RevRegDef(RevRegDef::new(104,String::from("revocable"), String::from("a4e25e54-e028-462b-a4d6-b1d1712d51a1")))
+            LedgerObject::from_str(
+                "/anoncreds/v0/REV_REG_DEF/104/revocable/a4e25e54-e028-462b-a4d6-b1d1712d51a1"
+            )
+            .unwrap(),
+            LedgerObject::RevRegDef(RevRegDef::new(
+                104,
+                String::from("revocable"),
+                String::from("a4e25e54-e028-462b-a4d6-b1d1712d51a1")
+            ))
         )
     }
     mod did_syntax_tests {
@@ -414,7 +451,7 @@ mod tests {
                 DidUrl::from_str("did:indy:sovrin:staging:6cgbu8ZPoWTnR5Rv5JcSMB").unwrap(),
                 DidUrl {
                     namespace: String::from("sovrin:staging"),
-                    id: DidValue::new("BDrEcHc8Tb4Lb2VyQZWEDE", None),
+                    id: DidValue::new("6cgbu8ZPoWTnR5Rv5JcSMB", None),
                     path: None,
                     query: HashMap::new(),
                     url: String::from("did:indy:sovrin:staging:6cgbu8ZPoWTnR5Rv5JcSMB"),
@@ -435,16 +472,13 @@ mod tests {
             q.insert(QueryParameter::VersionId, String::from("1"));
 
             assert_eq!(
-                DidUrl::from_str("did:indy:idunion:BDrEcHc8Tb4Lb2VyQZWEDE?versionId=1&hello=world")
-                    .unwrap(),
+                DidUrl::from_str("did:indy:idunion:BDrEcHc8Tb4Lb2VyQZWEDE?versionId=1").unwrap(),
                 DidUrl {
                     namespace: String::from("idunion"),
                     id: DidValue::new("BDrEcHc8Tb4Lb2VyQZWEDE", None),
                     path: None,
                     query: q,
-                    url: String::from(
-                        "did:indy:idunion:BDrEcHc8Tb4Lb2VyQZWEDE?versionId=1&hello=world"
-                    ),
+                    url: String::from("did:indy:idunion:BDrEcHc8Tb4Lb2VyQZWEDE?versionId=1"),
                 }
             );
         }
