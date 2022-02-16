@@ -97,12 +97,12 @@ impl DidDocument {
         let mut doc = json!({
              "id": format!("did:indy:{}:{}", self.namespace, self.id),
             "verificationMethod": [Ed25519VerificationKey2018 {
-                id: format!("did:indy:{}:{}#keys-1", self.namespace, self.id),
+                id: format!("did:indy:{}:{}#verkey", self.namespace, self.id),
                 type_: format!("Ed25519VerificationKey2018"),
                 controller: format!("did:indy:{}:{}", self.namespace, self.id),
                 public_key_base58: format!("{}", self.verkey),
             }],
-            "authentication": [format!("did:indy:{}:{}#keys-1", self.namespace, self.id)],
+            "authentication": [format!("did:indy:{}:{}#verkey", self.namespace, self.id)],
         });
 
         if self.diddoc_content.is_some() {
@@ -123,7 +123,7 @@ impl DidDocument {
                 let s = match service.as_str() {
                     LEGACY_INDY_SERVICE => json!(DidCommService::new(
                         format!("did:indy:{}:{}#did-communication", self.namespace, self.id),
-                        vec![format!("did:indy:{}:{}#keys-1", self.namespace, self.id)],
+                        vec![format!("did:indy:{}:{}#verkey", self.namespace, self.id)],
                         vec![],
                     )),
                     type_ => json!(GenericService {
@@ -209,12 +209,12 @@ mod tests {
         let serialized = json!({
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
             "verificationMethod": [{
-                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey",
                 "type": "Ed25519VerificationKey2018",
                 "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
                 "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
             }],
-            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey"],
         });
 
         // Need to compare serde value instead of string, since elements might be in
@@ -239,7 +239,7 @@ mod tests {
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
             "type": "did-communication",
             "serviceEndpoint": "https://example.com",
-            "recipientKeys": [ "#keys-1" ],
+            "recipientKeys": [ "#verkey" ],
             "routingKeys": [ ],
             "priority": 0
           }
@@ -261,17 +261,17 @@ mod tests {
             ],
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
             "verificationMethod": [{
-                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey",
                 "type": "Ed25519VerificationKey2018",
                 "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
                 "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
             }],
-            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey"],
             "service": [{
                 "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
                 "type": "did-communication",
                 "serviceEndpoint": "https://example.com",
-                "recipientKeys": [ "#keys-1" ],
+                "recipientKeys": [ "#verkey" ],
                 "routingKeys": [],
                 "priority": 0
             }]
@@ -303,7 +303,7 @@ mod tests {
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
             "type": "did-communication",
             "serviceEndpoint": "https://example.com",
-            "recipientKeys": [ "#keys-1" ],
+            "recipientKeys": [ "#verkey" ],
             "routingKeys": [],
             "priority": 0
         }]
@@ -324,7 +324,7 @@ mod tests {
             ],
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
             "verificationMethod": [{
-                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey",
                 "type": "Ed25519VerificationKey2018",
                 "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
                 "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
@@ -335,13 +335,13 @@ mod tests {
                 "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBc",
             }],
             "authentication": [
-                "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey",
                 "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-2"],
                 "service": [{
                     "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
                     "type": "did-communication",
                     "serviceEndpoint": "https://example.com",
-                    "recipientKeys": [ "#keys-1" ],
+                    "recipientKeys": [ "#verkey" ],
                     "routingKeys": [],
                     "priority": 0
                 }]
@@ -373,7 +373,7 @@ mod tests {
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
             "type": "did-communication",
             "serviceEndpoint": "https://example.com",
-            "recipientKeys": [ "#keys-1" ],
+            "recipientKeys": [ "#verkey" ],
             "routingKeys": [],
             "priority": 0
         }]
@@ -394,7 +394,7 @@ mod tests {
             ],
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
             "verificationMethod": [{
-                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey",
                 "type": "Ed25519VerificationKey2018",
                 "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
                 "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
@@ -405,14 +405,14 @@ mod tests {
                 "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBc",
             }],
             "authentication": [
-                "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey",
                 "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-2"
                 ],
                 "service": [{
                     "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
                     "type": "did-communication",
                     "serviceEndpoint": "https://example.com",
-                    "recipientKeys": [ "#keys-1" ],
+                    "recipientKeys": [ "#verkey" ],
                     "routingKeys": [],
                     "priority": 0
                 }]
@@ -444,16 +444,16 @@ mod tests {
         let serialized = json!({
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
             "verificationMethod": [{
-                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey",
                 "type": "Ed25519VerificationKey2018",
                 "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
                 "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
             }],
-            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey"],
             "service": [{
                 "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
                 "type": "did-communication",
-                "recipientKeys": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+                "recipientKeys": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey"],
                 "routingKeys": [],
                 "priority": 0
             }]
@@ -489,16 +489,16 @@ mod tests {
         let serialized = json!({
             "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
             "verificationMethod": [{
-                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1",
+                "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey",
                 "type": "Ed25519VerificationKey2018",
                 "controller": "did:indy:idunion:QowxFtwciWceMFr7WbwnM",
                 "publicKeyBase58": "67yDXtw6MK2D7V2kFSL7uMH6qTtrEbNtkdiTkbk9YJBk",
             }],
-            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+            "authentication": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey"],
             "service": [{
                 "id": "did:indy:idunion:QowxFtwciWceMFr7WbwnM#did-communication",
                 "type": "did-communication",
-                "recipientKeys": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#keys-1"],
+                "recipientKeys": ["did:indy:idunion:QowxFtwciWceMFr7WbwnM#verkey"],
                 "routingKeys": [],
                 "priority": 0
             }, {
