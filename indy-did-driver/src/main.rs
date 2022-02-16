@@ -1,5 +1,5 @@
 use git2::Repository;
-use indy_didresolver::did::did_parse;
+use indy_didresolver::did::DidUrl;
 use indy_didresolver::error::{DidIndyError, DidIndyResult};
 use indy_didresolver::resolver::Resolver;
 use indy_vdr::pool::{PoolBuilder, PoolTransactions, SharedPool};
@@ -27,8 +27,7 @@ fn main() {
     rouille::start_server_with_pool(String::from("0.0.0.0:") + PORT, POOL_SIZE, move |request| {
         let url = request.url();
         println!("incoming request: {}", url);
-        let request_regex =
-            Regex::new("/1.0/identifiers/(.*)").expect("Error in the DID Regex Syntax");
+        let request_regex = Regex::new("/1.0/identifiers/(.*)").unwrap();
 
         let captures = request_regex.captures(&url);
         if let Some(cap) = captures {
@@ -37,7 +36,7 @@ fn main() {
             match process_request(did, &resolvers) {
                 Ok(did_doc) => Response::text(did_doc),
                 Err(err) => {
-                    println!("{:?}",err);
+                    println!("{:?}", err);
                     Response::text("404").with_status_code(404)
                 }
             }
@@ -106,7 +105,7 @@ fn init_resolvers(source: &str) -> Resolvers {
 }
 
 fn process_request(request: &str, resolvers: &Resolvers) -> DidIndyResult<String> {
-    let did = did_parse(request)?;
+    let did = DidUrl::from_str(request)?;
     let resolver = if let Some(resolver) = resolvers.get(&did.namespace) {
         resolver
     } else {

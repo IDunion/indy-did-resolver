@@ -1,21 +1,18 @@
-use std::str::FromStr;
-
 use futures_executor::block_on;
+use indy_vdr::utils::Qualifiable;
 use serde_json::Value;
 
-use super::did::{did_parse, LedgerObject};
+use super::did::{DidUrl, LedgerObject};
 use super::did_document::{DidDocument, LEGACY_INDY_SERVICE};
-use super::error::{DidIndyResult, DidIndyError};
+use super::error::{DidIndyError, DidIndyResult};
 use super::responses::{Endpoint, GetNymResultV1};
 
-use indy_vdr::common::error::{VdrError, VdrErrorKind, VdrResult};
+use indy_vdr::common::error::VdrResult;
 use indy_vdr::ledger::constants::GET_NYM;
-use indy_vdr::ledger::identifiers::SchemaId;
+use indy_vdr::ledger::identifiers::{CredentialDefinitionId, RevocationRegistryId, SchemaId};
 use indy_vdr::pool::helpers::perform_ledger_request;
 use indy_vdr::pool::{Pool, PreparedRequest, RequestResult, TimingResult};
 use indy_vdr::utils::did::DidValue;
-
-use ssi::did;
 
 pub struct Resolver<T: Pool> {
     pool: T,
@@ -27,22 +24,8 @@ impl<T: Pool> Resolver<T> {
     }
 
     pub fn resolve(&self, did: &str) -> DidIndyResult<String> {
-        let did_url = did::DIDURL::try_from(String::from(did)).expect("Could not parse DID URL");
-
-        let did = did_url.did;
-        let did = did_parse(did.as_str())?;
-
-        // The path variable identifies the requested ledger object
-        // If there is no path, then we return a DID document
-        let path = if did_url.path_abempty != "" {
-            Some(did_url.path_abempty.as_str())
-        } else {
-            None
-        };
-
-        let did_value = DidValue::new(&did.id, Option::None);
-
-        let request = self.build_request(&did_value, path)?;
+        let did_url = DidUrl::from_str(did)?;
+        let request = self.build_request(&did_url)?;
 
         let ledger_data = handle_request(&self.pool, &request)?;
         let data = parse_ledger_data(&ledger_data)?;
@@ -55,13 +38,13 @@ impl<T: Pool> Resolver<T> {
 
                 let endpoint: Option<Endpoint> = if get_nym_result.diddoc_content.is_none() {
                     // Legacy: Try to find an attached ATTRIBUTE transacation with raw endpoint
-                    self.fetch_legacy_endpoint(&did_value).ok()
+                    self.fetch_legacy_endpoint(&did_url.id).ok()
                 } else {
                     None
                 };
 
                 let did_document = DidDocument::new(
-                    &did.namespace,
+                    &did_url.namespace,
                     &get_nym_result.dest,
                     &get_nym_result.verkey,
                     endpoint,
@@ -69,6 +52,7 @@ impl<T: Pool> Resolver<T> {
                 );
                 did_document.to_string()?
             }
+            // other ledger objects
             _ => data.to_string(),
         };
 
@@ -90,35 +74,49 @@ impl<T: Pool> Resolver<T> {
         Ok(endpoint_data)
     }
 
-    fn build_request(
-        &self,
-        did: &DidValue,
-        path: Option<&str>,
-    ) -> DidIndyResult<PreparedRequest> {
+    fn build_request(&self, did: &DidUrl) -> DidIndyResult<PreparedRequest> {
         let builder = self.pool.get_request_builder();
-        let request = match path {
-            Some(path) => match LedgerObject::from_str(path)? {
+
+        let request = if did.path.is_some() {
+            match LedgerObject::from_str(did.path.as_ref().unwrap().as_str())? {
                 LedgerObject::Schema(schema) => builder.build_get_schema_request(
-                    Option::None,
-                    &SchemaId::new(&did, &schema.name, &schema.version),
+                    None,
+                    &SchemaId::new(&did.id, &schema.name, &schema.version),
                 ),
-                LedgerObject::ClaimDef(_) => Err(VdrError::new(
-                    VdrErrorKind::Incompatible,
-                    Some(String::from("Not implemented")),
+                LedgerObject::ClaimDef(claim_def) => builder.build_get_cred_def_request(
                     None,
-                )),
-                LedgerObject::RevRegDef(_) => Err(VdrError::new(
-                    VdrErrorKind::Incompatible,
-                    Some(String::from("Not implemented")),
+                    &CredentialDefinitionId::from_str(
+                        format!(
+                            "{}:3:CL:{}:{}",
+                            &did.id, claim_def.schema_seq_no, claim_def.name
+                        )
+                        .as_str(),
+                    )
+                    .unwrap(),
+                ),
+                LedgerObject::RevRegDef(rev_reg_def) => builder.build_get_revoc_reg_def_request(
                     None,
-                )),
-                LedgerObject::RevRegEntry(_) => Err(VdrError::new(
-                    VdrErrorKind::Incompatible,
-                    Some(String::from("Not implemented")),
-                    None,
-                )),
-            },
-            None => builder.build_get_nym_request(Option::None, &did),
+                    &RevocationRegistryId::from_str(
+                        format!(
+                            "{}:4:{}:3:CL:{}:{}:CL_ACCUM:{}",
+                            &did.id,
+                            &did.id,
+                            rev_reg_def.schema_seq_no,
+                            rev_reg_def.claim_def_name,
+                            rev_reg_def.tag
+                        )
+                        .as_str(),
+                    )
+                    .unwrap(),
+                ),
+                // LedgerObject::RevRegEntry(_) => Err(VdrError::new(
+                //     VdrErrorKind::Incompatible,
+                //     Some(String::from("Not implemented")),
+                //     None,
+                // )),
+            }
+        } else {
+            builder.build_get_nym_request(Option::None, &did.id)
         };
         request.map_err(|e| DidIndyError::from(e))
     }
@@ -150,5 +148,4 @@ fn parse_ledger_data(ledger_data: &str) -> DidIndyResult<Value> {
     } else {
         Ok(data.to_owned())
     }
-    
 }
