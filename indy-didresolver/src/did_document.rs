@@ -111,7 +111,6 @@ impl DidDocument {
             if is_valid {
                 merge_diddoc(&mut doc, self.diddoc_content.as_ref().unwrap());
             } else {
-                // TODO: Meaningful error kind
                 return Err(DidIndyError::InvalidDidDoc);
             }
 
