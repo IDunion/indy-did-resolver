@@ -18,7 +18,7 @@ pub enum GetNymResult {
 
 #[derive(Deserialize, Eq, PartialEq, Debug)]
 pub struct GetNymResultV0 {
-    pub identifier: DidValue,
+    pub identifier: Option<DidValue>,
     pub dest: DidValue,
     pub role: Option<String>,
     pub verkey: String,
@@ -27,7 +27,7 @@ pub struct GetNymResultV0 {
 #[derive(Deserialize, Eq, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetNymResultV1 {
-    pub identifier: DidValue,
+    pub identifier: Option<DidValue>,
     pub dest: DidValue,
     pub role: Option<String>,
     pub verkey: String,

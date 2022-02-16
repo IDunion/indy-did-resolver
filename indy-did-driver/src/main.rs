@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-static PORT: &str = "8081";
+static PORT: &str = "8080";
 static POOL_SIZE: Option<usize> = Some(32);
 
 static GITHUB_NETWORKS: &str = "https://github.com/domwoe/networks";
