@@ -112,21 +112,20 @@ impl FromStr for LedgerObject {
             println!("{:?}", cap);
             match cap.get(1).unwrap().as_str() {
                 "SCHEMA" => Ok(LedgerObject::Schema(Schema::new(
-                    cap.get(2).ok_or(DidIndyError::Unknown)?.as_str().to_string(),
-                    cap.get(3).ok_or(DidIndyError::Unknown)?.as_str().to_string(),
+                    cap.get(2).ok_or(DidIndyError::InvalidDidUrl)?.as_str().to_string(),
+                    cap.get(3).ok_or(DidIndyError::InvalidDidUrl)?.as_str().to_string(),
                 ))),
                 "CLAIM_DEF" => Ok(LedgerObject::ClaimDef(ClaimDef::new(
-                    cap.get(2).ok_or(DidIndyError::Unknown)?.as_str().to_string(),
-                    cap.get(3).ok_or(DidIndyError::Unknown)?.as_str().to_string(),
+                    cap.get(2).ok_or(DidIndyError::InvalidDidUrl)?.as_str().to_string(),
+                    cap.get(3).ok_or(DidIndyError::InvalidDidUrl)?.as_str().to_string(),
                 ))),
                 "REV_REG_DEF" => unimplemented!("Not yet completed"),
                 "REV_REG_ENTRY" => unimplemented!("Not yet completed"),
 
-                _ => Err(DidIndyError::Unknown),
+                _ => Err(DidIndyError::InvalidDidUrl),
             }
         } else {
-            println!("Requested DID does not match the W3C DID-core standard.");
-            Err(DidIndyError::Unknown)
+            Err(DidIndyError::InvalidDidUrl)
         }
     }
 }
@@ -155,8 +154,7 @@ pub fn did_parse(did: &str) -> DidIndyResult<Did> {
             Ok(did)
         }
         None => {
-            println!("Requested DID does not match the W3C DID-core standard.");
-            Err(DidIndyError::Unknown)
+            Err(DidIndyError::InvalidDidUrl)
         }
     };
 }
@@ -169,7 +167,7 @@ mod tests {
     fn parse_unknown_ledger_object_fails() {
         assert!(matches!(
             LedgerObject::from_str("/PANTS/npdb/4.3.4"),
-            Err(DidIndyError::Unknown)
+            Err(DidIndyError::InvalidDidUrl)
         ))
     }
 
@@ -193,7 +191,7 @@ mod tests {
     fn parse_to_schema_without_version_fails() {
         assert!(matches!(
             LedgerObject::from_str("/SCHEMA/npdb"),
-            Err(DidIndyError::Unknown)
+            Err(DidIndyError::InvalidDidUrl)
         ))
     }
 
@@ -201,7 +199,7 @@ mod tests {
     fn parse_to_schema_with_one_digit_version_fails() {
         assert!(matches!(
             LedgerObject::from_str("/SCHEMA/npdb/4"),
-            Err(DidIndyError::Unknown)
+            Err(DidIndyError::InvalidDidUrl)
         ))
     }
     mod did_syntax_tests {

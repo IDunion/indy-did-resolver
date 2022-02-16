@@ -1,4 +1,4 @@
-use super::error::DidIndyError;
+use super::error::{DidIndyError, DidIndyResult};
 use super::responses::Endpoint;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -93,7 +93,7 @@ impl DidDocument {
         }
     }
 
-    pub fn to_string(&self) -> Result<String, DidIndyError> {
+    pub fn to_string(&self) -> DidIndyResult<String> {
         let mut doc = json!({
              "id": format!("did:indy:{}:{}", self.namespace, self.id),
             "verificationMethod": [Ed25519VerificationKey2018 {
@@ -112,7 +112,7 @@ impl DidDocument {
                 merge_diddoc(&mut doc, self.diddoc_content.as_ref().unwrap());
             } else {
                 // TODO: Meaningful error kind
-                return Err(DidIndyError::Unknown);
+                return Err(DidIndyError::InvalidDidDoc);
             }
 
             // Handling of legacy services

@@ -7,17 +7,21 @@ pub type DidIndyResult<T> = std::result::Result<T, DidIndyError>;
 #[derive(Debug, Error)]
 pub enum DidIndyError {
     #[error("Parsing error")]
-    Parsing(#[from] serde_json::Error),
+    ParsingError(#[from] serde_json::Error),
     #[error("Namespace not supported")]
     NamespaceNotSupported,
+    #[error("Empty data")]
+    EmptyData,
+    #[error("Invalid DID URL")]
+    InvalidDidUrl,
+    #[error("Invalid DID Document")]
+    InvalidDidDoc,
     #[error("Object not found")]
     NotFound,
     #[error("Function not implemented")]
     NotImplemented,
     #[error("VDR error")]
-    VDR(#[from] VdrError ),
-    #[error("Unkown error")]
-    Unknown,
+    VdrError(#[from] VdrError),
 }
 
 // impl fmt::Display for DidIndyError {
