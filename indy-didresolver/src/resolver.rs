@@ -115,10 +115,12 @@ fn build_request(did: &DidUrl, builder: &RequestBuilder) -> DidIndyResult<Prepar
             ),
             LedgerObject::RevRegEntry(rev_reg_def) => {
                 if did.query.contains_key(&QueryParameter::From) {
-                    let from = did.query.get(&QueryParameter::From)
+                    let from = did
+                        .query
+                        .get(&QueryParameter::From)
                         .and_then(|d| DateTime::parse_from_rfc3339(d).ok())
                         .and_then(|d| Some(d.timestamp()));
-                
+
                     let to = parse_or_now(did.query.get(&QueryParameter::From))?;
 
                     builder.build_get_revoc_reg_delta_request(
@@ -221,47 +223,8 @@ mod tests {
 
     use super::*;
     use rstest::*;
-    use serde_json::json;
 
     use indy_vdr::pool::ProtocolVersion;
-
-    const REQ_ID: u64 = 1585221529670242337;
-    const TYPE: &str = constants::GET_NYM;
-
-    fn _identifier() -> DidValue {
-        DidValue(String::from("V4SGRU86Z58d6TV7PBUe6f"))
-    }
-
-    fn _dest() -> DidValue {
-        DidValue(String::from("VsKV7grR1BUE29mG2Fm2kX"))
-    }
-
-    fn _protocol_version() -> usize {
-        ProtocolVersion::Node1_4.to_id()
-    }
-
-    #[fixture]
-    fn request() -> serde_json::Value {
-        json!({
-            "identifier": _identifier(),
-            "operation":{
-                "dest": _dest(),
-                "type": TYPE
-            },
-            "protocolVersion": _protocol_version(),
-            "reqId": REQ_ID
-        })
-    }
-
-    #[fixture]
-    fn request_json(request: serde_json::Value) -> String {
-        request.to_string()
-    }
-
-    #[fixture]
-    fn prepared_request(request_json: String) -> PreparedRequest {
-        PreparedRequest::from_request_json(&request_json).unwrap()
-    }
 
     #[fixture]
     fn request_builder() -> RequestBuilder {
@@ -290,16 +253,27 @@ mod tests {
     }
 
     #[rstest]
+    fn build_get_revoc_reg_request_fails_with_unparsable_version_time(
+        request_builder: RequestBuilder,
+    ) {
+        let datetime_as_str = "20201220T19:17:47Z";
+        let did_url_as_str = format!("did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_ENTRY/104/revocable/a4e25e54?versionTime={}",datetime_as_str);
+        let did_url = DidUrl::from_str(&did_url_as_str).unwrap();
+        let request = build_request(&did_url, &request_builder);
+
+        assert!(matches! {
+            request, Err(DidIndyError::DateTimeError(_))
+        })
+    }
+
+    #[rstest]
     fn build_get_revoc_reg_delta_request_with_from_to(request_builder: RequestBuilder) {
         let from_as_str = "2019-12-20T19:17:47Z";
         let to_as_str = "2020-12-20T19:17:47Z";
         let did_url_as_str = format!("did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_ENTRY/104/revocable/a4e25e54?from={}&to={}",from_as_str, to_as_str);
         let did_url = DidUrl::from_str(&did_url_as_str).unwrap();
         let request = build_request(&did_url, &request_builder).unwrap();
-        assert_eq!(
-            request.txn_type,
-            constants::GET_REVOC_REG_DELTA
-        );
+        assert_eq!(request.txn_type, constants::GET_REVOC_REG_DELTA);
     }
 
     #[rstest]
@@ -308,9 +282,6 @@ mod tests {
         let did_url_as_str = format!("did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_ENTRY/104/revocable/a4e25e54?from={}",from_as_str);
         let did_url = DidUrl::from_str(&did_url_as_str).unwrap();
         let request = build_request(&did_url, &request_builder).unwrap();
-        assert_eq!(
-            request.txn_type,
-            constants::GET_REVOC_REG_DELTA
-        );
+        assert_eq!(request.txn_type, constants::GET_REVOC_REG_DELTA);
     }
 }
