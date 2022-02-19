@@ -59,28 +59,14 @@ impl Anoncreds {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ObjectCodes {
-    Attrib = 1,
-    Schema = 2,
-    ClaimDef = 3,
-    RevRegDef = 4,
-    RevRegEntry = 5,
-}
-
-#[derive(Debug, PartialEq)]
 pub struct Schema {
     pub name: String,
     pub version: String,
-    type_: u8,
 }
 
 impl Schema {
     fn new(name: String, version: String) -> Self {
-        Self {
-            name,
-            version,
-            type_: ObjectCodes::Schema as u8,
-        }
+        Self { name, version }
     }
 
     fn from_str(input: &str) -> DidIndyResult<Schema> {
@@ -110,7 +96,6 @@ impl Schema {
 pub struct ClaimDef {
     pub schema_seq_no: u32,
     pub name: String,
-    type_: u8,
 }
 
 impl ClaimDef {
@@ -118,7 +103,6 @@ impl ClaimDef {
         Self {
             schema_seq_no,
             name,
-            type_: ObjectCodes::ClaimDef as u8,
         }
     }
 
@@ -148,24 +132,22 @@ impl ClaimDef {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct RevRegDef {
+pub struct RevReg {
     pub schema_seq_no: u32,
     pub claim_def_name: String,
     pub tag: String,
-    type_: u8,
 }
 
-impl RevRegDef {
+impl RevReg {
     fn new(schema_seq_no: u32, claim_def_name: String, tag: String) -> Self {
         Self {
             schema_seq_no,
             claim_def_name,
             tag,
-            type_: ObjectCodes::RevRegDef as u8,
         }
     }
 
-    fn from_str(input: &str) -> DidIndyResult<RevRegDef> {
+    fn from_str(input: &str) -> DidIndyResult<RevReg> {
         let re = Regex::new(
             format!(r"^{}/{}/{1}", SEQ_NO_PATTERN, CLIENT_DEFINED_NAME_PATTERN).as_str(),
         )
@@ -174,55 +156,7 @@ impl RevRegDef {
         let captures = re.captures(input);
 
         match captures {
-            Some(cap) => Ok(RevRegDef::new(
-                cap.get(1)
-                    .ok_or(DidIndyError::InvalidDidUrl)?
-                    .as_str()
-                    .to_string()
-                    .parse::<u32>()
-                    .unwrap(),
-                cap.get(2)
-                    .ok_or(DidIndyError::InvalidDidUrl)?
-                    .as_str()
-                    .to_string(),
-                cap.get(3)
-                    .ok_or(DidIndyError::InvalidDidUrl)?
-                    .as_str()
-                    .to_string(),
-            )),
-            _ => Err(DidIndyError::InvalidDidUrl),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct RevRegEntry {
-    pub schema_seq_no: u32,
-    pub claim_def_name: String,
-    pub tag: String,
-    type_: u8,
-}
-
-impl RevRegEntry {
-    fn new(schema_seq_no: u32, claim_def_name: String, tag: String) -> Self {
-        Self {
-            schema_seq_no,
-            claim_def_name,
-            tag,
-            type_: ObjectCodes::RevRegDef as u8,
-        }
-    }
-
-    fn from_str(input: &str) -> DidIndyResult<RevRegEntry> {
-        let re = Regex::new(
-            format!(r"^{}/{}/{1}", SEQ_NO_PATTERN, CLIENT_DEFINED_NAME_PATTERN).as_str(),
-        )
-        .unwrap();
-
-        let captures = re.captures(input);
-
-        match captures {
-            Some(cap) => Ok(RevRegEntry::new(
+            Some(cap) => Ok(RevReg::new(
                 cap.get(1)
                     .ok_or(DidIndyError::InvalidDidUrl)?
                     .as_str()
@@ -247,14 +181,15 @@ impl RevRegEntry {
 pub enum LedgerObject {
     Schema(Schema),
     ClaimDef(ClaimDef),
-    RevRegDef(RevRegDef),
-    RevRegEntry(RevRegEntry),
+    RevRegDef(RevReg),
+    RevRegEntry(RevReg),
+    RevRegDelta(RevReg),
 }
 
 impl LedgerObject {
     pub fn from_str(input: &str) -> DidIndyResult<LedgerObject> {
         let re = Regex::new(
-            r"^/([a-z]*)/([a-zA-Z0-9]*)/(SCHEMA|CLAIM_DEF|REV_REG_DEF|REV_REG_ENTRY)/(.*)?",
+            r"^/([a-z]*)/([a-zA-Z0-9]*)/(SCHEMA|CLAIM_DEF|REV_REG_DEF|REV_REG_ENTRY|REV_REG_DELTA)/(.*)?",
         )
         .unwrap();
 
@@ -282,12 +217,15 @@ impl LedgerObject {
                                 "CLAIM_DEF" => Ok(LedgerObject::ClaimDef(ClaimDef::from_str(
                                     ledger_object_type_specific_str,
                                 )?)),
-                                "REV_REG_DEF" => Ok(LedgerObject::RevRegDef(RevRegDef::from_str(
+                                "REV_REG_DEF" => Ok(LedgerObject::RevRegDef(RevReg::from_str(
                                     ledger_object_type_specific_str,
                                 )?)),
-                                "REV_REG_ENTRY" => Ok(LedgerObject::RevRegEntry(
-                                    RevRegEntry::from_str(ledger_object_type_specific_str)?,
-                                )),
+                                "REV_REG_ENTRY" => Ok(LedgerObject::RevRegEntry(RevReg::from_str(
+                                    ledger_object_type_specific_str,
+                                )?)),
+                                "REV_REG_DELTA" => Ok(LedgerObject::RevRegDelta(RevReg::from_str(
+                                    ledger_object_type_specific_str,
+                                )?)),
 
                                 _ => Err(DidIndyError::InvalidDidUrl),
                             }
@@ -441,7 +379,7 @@ mod tests {
     fn parse_to_rev_reg_entry() {
         assert_eq!(
             LedgerObject::from_str("/anoncreds/v0/REV_REG_ENTRY/104/revocable/a4e25e54").unwrap(),
-            LedgerObject::RevRegEntry(RevRegEntry::new(
+            LedgerObject::RevRegEntry(RevReg::new(
                 104,
                 String::from("revocable"),
                 String::from("a4e25e54")
@@ -456,7 +394,7 @@ mod tests {
                 "/anoncreds/v0/REV_REG_DEF/104/revocable/a4e25e54-e028-462b-a4d6-b1d1712d51a1"
             )
             .unwrap(),
-            LedgerObject::RevRegDef(RevRegDef::new(
+            LedgerObject::RevRegDef(RevReg::new(
                 104,
                 String::from("revocable"),
                 String::from("a4e25e54-e028-462b-a4d6-b1d1712d51a1")
