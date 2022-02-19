@@ -5,6 +5,11 @@ use url::Url;
 
 use std::collections::HashMap;
 
+// Patterns to build regular expressions for ledger objects
+static CLIENT_DEFINED_NAME_PATTERN: &str = "([\\w-]*)";
+static SEQ_NO_PATTERN: &str = "(\\d*)";
+static VERSION_PATTERN: &str = "((\\d*\\.){1,2}\\d*)";
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum QueryParameter {
     VersionId,
@@ -79,7 +84,9 @@ impl Schema {
     }
 
     fn from_str(input: &str) -> DidIndyResult<Schema> {
-        let re = Regex::new(r"^([a-zA-Z0-9_:]*)/?((?:\d\.){1,2}\d)").unwrap();
+        let re =
+            Regex::new(format!(r"^{}/?{}", CLIENT_DEFINED_NAME_PATTERN, VERSION_PATTERN).as_str())
+                .unwrap();
 
         let captures = re.captures(input);
 
@@ -116,7 +123,9 @@ impl ClaimDef {
     }
 
     fn from_str(input: &str) -> DidIndyResult<ClaimDef> {
-        let re = Regex::new(r"^([0-9]*)/([a-zA-Z0-9_-]?*)").unwrap();
+        let re =
+            Regex::new(format!(r"^{}/{}", SEQ_NO_PATTERN, CLIENT_DEFINED_NAME_PATTERN).as_str())
+                .unwrap();
 
         let captures = re.captures(input);
 
@@ -157,7 +166,10 @@ impl RevRegDef {
     }
 
     fn from_str(input: &str) -> DidIndyResult<RevRegDef> {
-        let re = Regex::new(r"^([0-9]*)/([a-zA-Z0-9_-]?*)/([a-zA-Z0-9._-]?*)$").unwrap();
+        let re = Regex::new(
+            format!(r"^{}/{}/{1}", SEQ_NO_PATTERN, CLIENT_DEFINED_NAME_PATTERN).as_str(),
+        )
+        .unwrap();
 
         let captures = re.captures(input);
 
@@ -202,7 +214,10 @@ impl RevRegEntry {
     }
 
     fn from_str(input: &str) -> DidIndyResult<RevRegEntry> {
-        let re = Regex::new(r"^([0-9]*)/([a-zA-Z0-9_-]?*)/([a-zA-Z0-9._-]?*)$").unwrap();
+        let re = Regex::new(
+            format!(r"^{}/{}/{1}", SEQ_NO_PATTERN, CLIENT_DEFINED_NAME_PATTERN).as_str(),
+        )
+        .unwrap();
 
         let captures = re.captures(input);
 
@@ -367,10 +382,18 @@ mod tests {
     }
 
     #[test]
-    fn parse_to_schema_two_digit_version() {
+    fn parse_to_schema_two_point_seperated_version() {
         assert_eq!(
             LedgerObject::from_str("/anoncreds/v0/SCHEMA/npdb/4.3").unwrap(),
             LedgerObject::Schema(Schema::new(String::from("npdb"), String::from("4.3")))
+        )
+    }
+
+    #[test]
+    fn parse_to_schema_two_digit_version() {
+        assert_eq!(
+            LedgerObject::from_str("/anoncreds/v0/SCHEMA/npdb/11.3").unwrap(),
+            LedgerObject::Schema(Schema::new(String::from("npdb"), String::from("11.3")))
         )
     }
 
@@ -415,6 +438,18 @@ mod tests {
     }
 
     #[test]
+    fn parse_to_rev_reg_entry() {
+        assert_eq!(
+            LedgerObject::from_str("/anoncreds/v0/REV_REG_ENTRY/104/revocable/a4e25e54").unwrap(),
+            LedgerObject::RevRegEntry(RevRegEntry::new(
+                104,
+                String::from("revocable"),
+                String::from("a4e25e54")
+            ))
+        )
+    }
+
+    #[test]
     fn parse_to_rev_reg_def() {
         assert_eq!(
             LedgerObject::from_str(
@@ -428,6 +463,7 @@ mod tests {
             ))
         )
     }
+
     mod did_syntax_tests {
 
         use super::*;
@@ -503,6 +539,26 @@ mod tests {
                     query: HashMap::new(),
                     url: String::from(
                         "did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_DEF/104/revocable/a4e25e54-e028-462b-a4d6-b1d1712d51a1"
+                    ),
+                }
+            );
+        }
+
+        #[test]
+        fn parse_did_url_with_path_and_query() {
+            let mut q = HashMap::new();
+            q.insert(QueryParameter::VersionTime, String::from("someXmlDateTime"));
+
+            assert_eq!(
+                DidUrl::from_str("did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_DEF/104/revocable/a4e25e54-e028-462b-a4d6-b1d1712d51a1?versionTime=someXmlDateTime")
+                    .unwrap(),
+                DidUrl {
+                    namespace: String::from("idunion"),
+                    id: DidValue::new("Dk1fRRTtNazyMuK2cr64wp", None),
+                    path: Some(String::from("/anoncreds/v0/REV_REG_DEF/104/revocable/a4e25e54-e028-462b-a4d6-b1d1712d51a1")),
+                    query: q,
+                    url: String::from(
+                        "did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_DEF/104/revocable/a4e25e54-e028-462b-a4d6-b1d1712d51a1?versionTime=someXmlDateTime"
                     ),
                 }
             );

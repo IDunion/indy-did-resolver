@@ -7,15 +7,6 @@ pub const LEGACY_INDY_SERVICE: &str = "endpoint";
 pub const DID_CORE_CONTEXT: &str = "https://www.w3.org/ns/did/v1";
 
 #[derive(Serialize, PartialEq, Debug)]
-pub struct DidDocumentJson {
-    pub id: String,
-    #[serde(rename = "verificationMethod")]
-    pub verification_method: Vec<Ed25519VerificationKey2018>,
-    pub authentication: Vec<String>,
-    pub service: Option<Vec<Service>>,
-}
-
-#[derive(Serialize, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Ed25519VerificationKey2018 {
     pub id: String,
@@ -486,7 +477,7 @@ mod tests {
         );
 
         let v_from_doc: Value = serde_json::from_str(doc.to_string().unwrap().as_str()).unwrap();
-        
+
         assert_eq!(2, v_from_doc["service"].as_array().unwrap().len())
     }
 

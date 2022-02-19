@@ -39,8 +39,6 @@ impl<T: Pool> Resolver<T> {
             constants::GET_NYM => {
                 let get_nym_result: GetNymResultV1 = serde_json::from_str(data.as_str().unwrap())?;
 
-                println!("{:#?}", get_nym_result);
-
                 let endpoint: Option<Endpoint> = if get_nym_result.diddoc_content.is_none() {
                     // Legacy: Try to find an attached ATTRIBUTE transacation with raw endpoint
                     self.fetch_legacy_endpoint(&did_url.id).ok()
