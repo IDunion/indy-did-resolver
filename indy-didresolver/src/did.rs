@@ -81,7 +81,7 @@ impl Schema {
 
     fn from_str(input: &str) -> DidIndyResult<Schema> {
         let re =
-            Regex::new(format!(r"^{}/?{}", CLIENT_DEFINED_NAME_PATTERN, VERSION_PATTERN).as_str())
+            Regex::new(format!(r"^{}/{}", CLIENT_DEFINED_NAME_PATTERN, VERSION_PATTERN).as_str())
                 .unwrap();
 
         let captures = re.captures(input);
