@@ -6,6 +6,16 @@ use url::Url;
 use std::collections::HashMap;
 
 // Patterns to build regular expressions for ledger objects
+static DID_INDY_PREFIX: &str= "did:indy";
+static NAMESPACE_PATTERN: &str = "((?:[a-z0-9_-]+:?){1,2})";
+// uses base58 alphabet
+static INDY_UNQUALIFIED_DID_PATTERN: &str = "([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{21,22})";
+static OBJECT_FAMILY_PATTERN: &str = "([a-z]*)";
+static OBJECT_FAMILY_VERSION_PATTERN: &str = "([a-zA-Z0-9]*)";
+
+static ANONCREDSV0_OBJECTS_PATTERN: &str =
+    "(SCHEMA|CLAIM_DEF|REV_REG_DEF|REV_REG_ENTRY|REV_REG_DELTA)";
+
 static CLIENT_DEFINED_NAME_PATTERN: &str = "([\\w-]*)";
 static SEQ_NO_PATTERN: &str = "(\\d*)";
 static VERSION_PATTERN: &str = "((\\d*\\.){1,2}\\d*)";
@@ -189,7 +199,11 @@ pub enum LedgerObject {
 impl LedgerObject {
     pub fn from_str(input: &str) -> DidIndyResult<LedgerObject> {
         let re = Regex::new(
-            r"^/([a-z]*)/([a-zA-Z0-9]*)/(SCHEMA|CLAIM_DEF|REV_REG_DEF|REV_REG_ENTRY|REV_REG_DELTA)/(.*)?",
+            format!(
+                r"{}/{}/{}/(.+)?",
+                OBJECT_FAMILY_PATTERN, OBJECT_FAMILY_VERSION_PATTERN, ANONCREDSV0_OBJECTS_PATTERN
+            )
+            .as_str(),
         )
         .unwrap();
 
@@ -250,9 +264,8 @@ pub struct DidUrl {
 
 impl DidUrl {
     pub fn from_str(input: &str) -> DidIndyResult<DidUrl> {
-        let did_regex =
-            Regex::new("did:indy:([a-zA-Z]+|[a-zA-Z]+:[a-zA-Z]+):([a-zA-Z0-9]{21,22})(/.*)?$")
-                .unwrap();
+        
+        let did_regex = Regex::new(format!(r"{}:{}:{}(.+)?$",DID_INDY_PREFIX, NAMESPACE_PATTERN, INDY_UNQUALIFIED_DID_PATTERN).as_str()).unwrap();
 
         let input_without_query = input.split("?").collect::<Vec<&str>>()[0];
 
@@ -437,7 +450,16 @@ mod tests {
 
             let _err = DidUrl::from_str("did:indy:test:12345678901234567890").unwrap_err();
             let _err = DidUrl::from_str("did:indy:test:12345678901234567890123").unwrap_err();
-            //TODO: add Test to fail with namespace-identifer with O,0,I,l
+
+            // fails because contains characters not in base58
+            // 0
+            let _err = DidUrl::from_str("did:indy:test:0cgbu8ZPoWTnR5Rv5JcSMB").unwrap_err();
+            // O
+            let _err = DidUrl::from_str("did:indy:test:Ocgbu8ZPoWTnR5Rv5JcSMB").unwrap_err();
+            // I
+            let _err = DidUrl::from_str("did:indy:test:Icgbu8ZPoWTnR5Rv5JcSMB").unwrap_err();
+            // l
+            let _err = DidUrl::from_str("did:indy:test:lcgbu8ZPoWTnR5Rv5JcSMB").unwrap_err();
         }
 
         #[test]
