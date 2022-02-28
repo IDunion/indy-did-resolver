@@ -265,9 +265,7 @@ pub struct DidUrl {
 impl DidUrl {
     pub fn from_str(input: &str) -> DidIndyResult<DidUrl> {
         
-        let did_regex = Regex::new(format!(r"{}:{}:{}(.+)?$",DID_INDY_PREFIX, NAMESPACE_PATTERN, INDY_UNQUALIFIED_DID_PATTERN).as_str()).unwrap();
-
-        let input_without_query = input.split("?").collect::<Vec<&str>>()[0];
+        let did_regex = Regex::new(format!(r"{}:{}:{}([^\?]+)?(?:\?(.+))?$",DID_INDY_PREFIX, NAMESPACE_PATTERN, INDY_UNQUALIFIED_DID_PATTERN).as_str()).unwrap();
 
         let url = Url::parse(input).map_err(|_| DidIndyError::InvalidDidUrl)?;
         let mut query_pairs: HashMap<QueryParameter, String> = HashMap::new();
@@ -279,7 +277,7 @@ impl DidUrl {
             query_pairs.insert(qp, v.to_string());
         }
 
-        let captures = did_regex.captures(input_without_query.trim());
+        let captures = did_regex.captures(input.trim());
         match captures {
             Some(cap) => {
                 let did = DidUrl {
