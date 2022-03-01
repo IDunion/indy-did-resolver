@@ -10,24 +10,46 @@ use rouille::Response;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use clap::Parser;
+#[macro_use]
+extern crate log;
 
-static PORT: &str = "8080";
 static POOL_SIZE: Option<usize> = Some(32);
-
-static GITHUB_NETWORKS: &str = "https://github.com/domwoe/networks";
-static GENESIS_FILE_NAME: &str = "pool_transactions_genesis.json";
-
 type Resolvers = HashMap<String, Resolver<SharedPool>>;
 
 //did:indy:idunion:BDrEcHc8Tb4Lb2VyQZWEDE
 //did:indy:eesdi:H1iHEynabfar9mp4uprW6W
 
-fn main() {
-    let resolvers = init_resolvers("");
 
-    rouille::start_server_with_pool(String::from("0.0.0.0:") + PORT, POOL_SIZE, move |request| {
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+pub struct Args {
+    /// Port to expose
+    #[clap(short = 'p', long = "port", default_value_t = 8080)]
+    port: u32,
+    /// source to use, allowed values are path or github
+    #[clap(short = 's', long = "source", default_value = "")]
+    source: String,
+    /// github repository for registered networks
+    #[clap(short = 'n', long = "github-network", default_value = "https://github.com/domwoe/networks")]
+    github_networks: String,
+    /// Pool transaction genesis filename
+    #[clap(short = 'f', long = "genesis-filename", default_value = "pool_transactions_genesis.json")]
+    genesis_filename: String,
+}
+
+fn main() {
+    let args = Args::parse();
+    let port = &args.port.to_string();
+    env_logger::init();
+    info!("Starting the indy-did-driver with the following configuration:");
+    info!("{:?}", args);
+
+    let resolvers = init_resolvers(args);
+
+    rouille::start_server_with_pool(String::from("0.0.0.0:") + port, POOL_SIZE, move |request| {
         let url = request.url();
-        println!("incoming request: {}", url);
+        debug!("incoming request: {}", url);
         let request_regex = Regex::new("/1.0/identifiers/(.*)").unwrap();
 
         let captures = request_regex.captures(&url);
@@ -35,29 +57,37 @@ fn main() {
             let did = cap.get(1).unwrap().as_str();
 
             match process_request(did, &resolvers) {
-                Ok(result) => Response::text(result),
+                Ok(result) =>  {
+                    info!("Serving for {}", &url);
+                    debug!("Serving DID Doc: {:?}", result);
+                    Response::text(result)
+                }
                 Err(err) => {
-                    println!("{:?}", err);
+                    error!("404: {:?}", err);
                     Response::text("404").with_status_code(404)
                 }
             }
         } else {
+            info!("400: unrecognized path: {}", &url);
             Response::text("400").with_status_code(400)
         }
     });
 }
 
-fn init_resolvers(source: &str) -> Resolvers {
+fn init_resolvers(args: Args) -> Resolvers {
     let mut resolvers: Resolvers = HashMap::new();
+    let source = args.source;
     let path = if source == "github" || source.is_empty() {
+        info!("Obtaining network information from github");
         // Delete folder if it exists and reclone repo
         fs::remove_dir_all("github").ok();
-        let repo = Repository::clone(GITHUB_NETWORKS, "github")
+        let repo = Repository::clone(args.github_networks.as_str(), "github")
             .expect("Could not clone network repository.");
         repo.path().parent().unwrap().to_owned()
     } else if source.starts_with("http:") || source.starts_with("https:") {
         unimplemented!("Download of genesis files from custom location is not supported");
     } else {
+        info!("Obtaining network information from local path {}", source);
         PathBuf::from(source)
     };
 
@@ -75,7 +105,6 @@ fn init_resolvers(source: &str) -> Resolvers {
                 } else {
                     None
                 };
-
                 let (ledger_prefix, genesis_txns) = match sub_namespace {
                     Some(sub_namespace) => (
                         format!(
@@ -83,15 +112,16 @@ fn init_resolvers(source: &str) -> Resolvers {
                             namespace.to_str().unwrap(),
                             sub_namespace.to_str().unwrap()
                         ),
-                        PoolTransactions::from_json_file(sub_entry_path.join(GENESIS_FILE_NAME))
+                        PoolTransactions::from_json_file(sub_entry_path.join(args.genesis_filename.as_str()))
                             .unwrap(),
                     ),
                     None => (
                         String::from(namespace.to_str().unwrap()),
-                        PoolTransactions::from_json_file(entry.path().join(GENESIS_FILE_NAME))
+                        PoolTransactions::from_json_file(entry.path().join(args.genesis_filename.as_str()))
                             .unwrap(),
                     ),
                 };
+                debug!("Initializing pool for {}", ledger_prefix);
 
                 let pool_builder = PoolBuilder::default()
                     .transactions(genesis_txns.clone())
@@ -99,6 +129,7 @@ fn init_resolvers(source: &str) -> Resolvers {
                 let mut pool = pool_builder.into_shared().unwrap();
 
                 // Refresh pool to get current validator set
+                debug!("Refreshing pool for {}", ledger_prefix);
                 let (txns, _timing) = block_on(perform_refresh(&pool)).unwrap();
 
                 pool = if let Some(txns) = txns {
@@ -119,7 +150,7 @@ fn init_resolvers(source: &str) -> Resolvers {
         }
     }
 
-    println!("{:?}", resolvers.keys());
+    info!("Initialized networks: {:?}", resolvers.keys());
     resolvers
 }
 
@@ -128,7 +159,7 @@ fn process_request(request: &str, resolvers: &Resolvers) -> DidIndyResult<String
     let resolver = if let Some(resolver) = resolvers.get(&did.namespace) {
         resolver
     } else {
-        println!("Requested Indy Namespace \"{}\" unknown", &did.namespace);
+        error!("Requested Indy Namespace \"{}\" unknown", &did.namespace);
         return Err(DidIndyError::NamespaceNotSupported);
     };
 
