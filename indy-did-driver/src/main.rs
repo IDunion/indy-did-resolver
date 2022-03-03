@@ -132,5 +132,9 @@ fn process_request(request: &str, resolvers: &Resolvers) -> DidIndyResult<String
         return Err(DidIndyError::NamespaceNotSupported);
     };
 
-    resolver.resolve(request)
+    if did.path.is_none() {
+        resolver.resolve(request)
+    } else {
+        resolver.dereference(request)
+    }
 }
