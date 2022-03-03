@@ -11,9 +11,9 @@ use super::error::{DidIndyError, DidIndyResult};
 use super::responses::{Endpoint, GetNymResultV1};
 
 use indy_vdr::common::error::VdrResult;
+use indy_vdr::ledger::constants;
 use indy_vdr::ledger::identifiers::{CredentialDefinitionId, RevocationRegistryId, SchemaId};
 use indy_vdr::ledger::RequestBuilder;
-use indy_vdr::ledger::{constants};
 use indy_vdr::pool::helpers::perform_ledger_request;
 use indy_vdr::pool::{Pool, PreparedRequest, RequestResult, TimingResult};
 use indy_vdr::utils::did::DidValue;
@@ -95,8 +95,7 @@ impl<T: Pool> Resolver<T> {
         let builder = self.pool.get_request_builder();
         let request = build_request(&did_url, &builder)?;
 
-        let ledger_data: String = handle_request(&self.pool, &request)?;
-    
+        let ledger_data = handle_request(&self.pool, &request)?;
         let data = parse_ledger_data(&ledger_data)?;
 
         let result = match request.txn_type.as_str() {
