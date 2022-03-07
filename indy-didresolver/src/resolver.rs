@@ -221,6 +221,8 @@ fn parse_or_now(datetime: Option<&String>) -> DidIndyResult<i64> {
 #[cfg(test)]
 mod tests {
 
+    use urlencoding::encode;
+
     use super::*;
     use rstest::*;
 
@@ -327,5 +329,24 @@ mod tests {
         assert_eq!(request.txn_type, constants::GET_REVOC_REG_DELTA);
         assert!(from.is_none());
         assert!(to >= now);
+    }
+
+    #[rstest]
+    fn build_get_schema_request_with_whitespace(request_builder: RequestBuilder) {
+        let name = "My Schema";
+        let encoded_schema_name = encode(name).to_string();
+        let did_url_string = format!(
+            "did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/SCHEMA/{}/1.0",
+            encoded_schema_name
+        );
+
+        let did_url = DidUrl::from_str(did_url_string.as_str()).unwrap();
+        let request = build_request(&did_url, &request_builder).unwrap();
+        let schema_name = (*(request.req_json).get("operation").unwrap())
+            .get("data")
+            .and_then(|v| v.get("name"))
+            .and_then(|v| v.as_str())
+            .unwrap();
+        assert_eq!(schema_name, name);
     }
 }

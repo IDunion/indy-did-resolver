@@ -2,6 +2,7 @@ use super::error::{DidIndyError, DidIndyResult};
 use indy_vdr::utils::did::DidValue;
 use regex::Regex;
 use url::Url;
+use urlencoding::decode;
 
 use std::collections::HashMap;
 
@@ -16,7 +17,7 @@ static OBJECT_FAMILY_VERSION_PATTERN: &str = "([a-zA-Z0-9]*)";
 static ANONCREDSV0_OBJECTS_PATTERN: &str =
     "(SCHEMA|CLAIM_DEF|REV_REG_DEF|REV_REG_ENTRY|REV_REG_DELTA)";
 
-static CLIENT_DEFINED_NAME_PATTERN: &str = "([\\w-]*)";
+static CLIENT_DEFINED_NAME_PATTERN: &str = "([\\w -]*)";
 static SEQ_NO_PATTERN: &str = "(\\d*)";
 static VERSION_PATTERN: &str = "((\\d*\\.){1,2}\\d*)";
 
@@ -283,7 +284,7 @@ impl DidUrl {
                 let did = DidUrl {
                     namespace: cap.get(1).unwrap().as_str().to_string(),
                     id: DidValue::new(cap.get(2).unwrap().as_str(), Option::None),
-                    path: cap.get(3).and_then(|p| Some(p.as_str().to_string())),
+                    path: cap.get(3).and_then(|p| Some(decode(p.as_str()).unwrap().to_string())),
                     query: query_pairs,
                     url: input.to_string(),
                 };
