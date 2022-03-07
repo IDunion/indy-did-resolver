@@ -30,7 +30,7 @@ pub struct Args {
     #[clap(
         short = 'n',
         long = "github-network",
-        default_value = "https://github.com/domwoe/networks"
+        default_value = "https://github.com/IDunion/indy-did-networks"
     )]
     github_networks: String,
     /// Pool transaction genesis filename
@@ -99,7 +99,7 @@ fn init_resolvers(args: Args) -> Resolvers {
     for entry in entries {
         let entry = entry.unwrap();
         // filter hidden directories starting with "."
-        if !entry.file_name().to_str().unwrap().starts_with(".") {
+        if !entry.file_name().to_str().unwrap().starts_with(".") && entry.metadata().unwrap().is_dir() {
             let namespace = entry.path().file_name().unwrap().to_owned();
             let sub_entries = fs::read_dir(entry.path()).unwrap();
             for sub_entry in sub_entries {
