@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use indy_vdr::utils::did::DidValue;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::value::Value;
+use std::collections::HashMap;
 
 pub enum ResponseTypes {
     GetNymResult(GetNymResult),
@@ -13,7 +13,7 @@ pub enum ResponseTypes {
 #[serde(untagged)]
 pub enum GetNymResult {
     GetNymResultV0(GetNymResultV0),
-    GetNymResultV1(GetNymResultV1)
+    GetNymResultV1(GetNymResultV1),
 }
 
 #[derive(Deserialize, Eq, PartialEq, Debug)]
@@ -53,8 +53,7 @@ pub struct GetClaimDefResult {
     pub ref_schema_version: String,
 }
 
-
-#[derive(Clone, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
 pub struct Endpoint {
-    pub endpoint: HashMap<String,String>,
+    pub endpoint: HashMap<String, String>,
 }

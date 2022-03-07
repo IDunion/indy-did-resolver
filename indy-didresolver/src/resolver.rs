@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 
 use futures_executor::block_on;
 use indy_vdr::utils::Qualifiable;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::did::{DidUrl, LedgerObject, QueryParameter};
@@ -17,6 +18,36 @@ use indy_vdr::pool::helpers::perform_ledger_request;
 use indy_vdr::pool::{Pool, PreparedRequest, RequestResult, TimingResult};
 use indy_vdr::utils::did::DidValue;
 
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum Result {
+    DidDocument(DidDocument),
+    Content(Value),
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentMetadata {
+    node_response: Value,
+    object_type: String,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolutionResult {
+    did_resolution_metadata: Option<String>,
+    did_document: Option<Value>,
+    did_document_metadata: Option<ContentMetadata>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DereferencingResult {
+    dereferencing_metadata: Option<String>,
+    content_stream: Option<Value>,
+    content_metadata: Option<ContentMetadata>,
+}
+
 pub struct Resolver<T: Pool> {
     pool: T,
 }
@@ -26,7 +57,40 @@ impl<T: Pool> Resolver<T> {
         Resolver { pool }
     }
 
+    pub fn dereference(&self, did_url: &str) -> DidIndyResult<String> {
+        let (data, metadata) = self._resolve(did_url)?;
+
+        let content = match data {
+            Result::Content(c) => Some(c),
+            _ => None,
+        };
+
+        let result = DereferencingResult {
+            dereferencing_metadata: None,
+            content_stream: content,
+            content_metadata: Some(metadata),
+        };
+
+        Ok(serde_json::to_string_pretty(&result).unwrap())
+    }
+
     pub fn resolve(&self, did: &str) -> DidIndyResult<String> {
+        let (data, metadata) = self._resolve(did)?;
+
+        let diddoc = match data {
+            Result::DidDocument(doc) => Some(doc.to_value()?),
+            _ => None,
+        };
+        let result = ResolutionResult {
+            did_resolution_metadata: None,
+            did_document: diddoc,
+            did_document_metadata: Some(metadata),
+        };
+
+        Ok(serde_json::to_string_pretty(&result).unwrap())
+    }
+
+    fn _resolve(&self, did: &str) -> DidIndyResult<(Result, ContentMetadata)> {
         let did_url = DidUrl::from_str(did)?;
 
         let builder = self.pool.get_request_builder();
@@ -35,7 +99,7 @@ impl<T: Pool> Resolver<T> {
         let ledger_data = handle_request(&self.pool, &request)?;
         let data = parse_ledger_data(&ledger_data)?;
 
-        let result = match request.txn_type.as_str() {
+        let (result, object_type) = match request.txn_type.as_str() {
             constants::GET_NYM => {
                 let get_nym_result: GetNymResultV1 = serde_json::from_str(data.as_str().unwrap())?;
 
@@ -53,13 +117,25 @@ impl<T: Pool> Resolver<T> {
                     endpoint,
                     None,
                 );
-                did_document.to_string()?
+                (Result::DidDocument(did_document), String::from("NYM"))
             }
-            // other ledger objects
-            _ => data.to_string(),
+            constants::GET_CRED_DEF => (Result::Content(data), String::from("CRED_DEF")),
+            constants::GET_SCHEMA => (Result::Content(data), String::from("SCHEMA")),
+            constants::GET_REVOC_REG_DEF => (Result::Content(data), String::from("REVOC_REG_DEF")),
+            constants::GET_REVOC_REG_DELTA => {
+                (Result::Content(data), String::from("REVOC_REG_DELTA"))
+            }
+            _ => (Result::Content(data), String::from("UNKOWN")),
         };
 
-        Ok(result)
+        let metadata = ContentMetadata {
+            node_response: serde_json::from_str(&ledger_data).unwrap(),
+            object_type,
+        };
+
+        let result_with_metadata = (result, metadata);
+
+        Ok(result_with_metadata)
     }
 
     fn fetch_legacy_endpoint(&self, did: &DidValue) -> DidIndyResult<Endpoint> {

@@ -51,6 +51,8 @@ pub enum Service {
     DidCommService(DidCommService),
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DidDocument {
     namespace: String,
     id: String,
@@ -84,7 +86,7 @@ impl DidDocument {
         }
     }
 
-    pub fn to_string(&self) -> DidIndyResult<String> {
+    pub fn to_value(&self) -> DidIndyResult<Value> {
         let mut doc = json!({
              "id": format!("did:indy:{}:{}", self.namespace, self.id),
             "verificationMethod": [Ed25519VerificationKey2018 {
@@ -130,6 +132,11 @@ impl DidDocument {
             }
         }
 
+        Ok(doc)
+    }
+
+    pub fn to_string(&self) -> DidIndyResult<String> {
+        let doc = self.to_value()?;
         Ok(serde_json::to_string_pretty(&doc).unwrap())
     }
 }

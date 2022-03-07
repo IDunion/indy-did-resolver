@@ -35,7 +35,7 @@ fn main() {
             let did = cap.get(1).unwrap().as_str();
 
             match process_request(did, &resolvers) {
-                Ok(did_doc) => Response::text(did_doc),
+                Ok(result) => Response::text(result),
                 Err(err) => {
                     println!("{:?}", err);
                     Response::text("404").with_status_code(404)
@@ -132,5 +132,9 @@ fn process_request(request: &str, resolvers: &Resolvers) -> DidIndyResult<String
         return Err(DidIndyError::NamespaceNotSupported);
     };
 
-    resolver.resolve(request)
+    if did.path.is_none() {
+        resolver.resolve(request)
+    } else {
+        resolver.dereference(request)
+    }
 }
