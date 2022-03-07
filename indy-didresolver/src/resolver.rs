@@ -29,6 +29,7 @@ pub enum Result {
 #[serde(rename_all = "camelCase")]
 pub struct ContentMetadata {
     node_response: Value,
+    object_type: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -98,7 +99,7 @@ impl<T: Pool> Resolver<T> {
         let ledger_data = handle_request(&self.pool, &request)?;
         let data = parse_ledger_data(&ledger_data)?;
 
-        let result = match request.txn_type.as_str() {
+        let (result, object_type) = match request.txn_type.as_str() {
             constants::GET_NYM => {
                 let get_nym_result: GetNymResultV1 = serde_json::from_str(data.as_str().unwrap())?;
 
@@ -116,14 +117,20 @@ impl<T: Pool> Resolver<T> {
                     endpoint,
                     None,
                 );
-                Result::DidDocument(did_document)
+                (Result::DidDocument(did_document), String::from("NYM"))
             }
-            // other ledger objects
-            _ => Result::Content(data),
+            constants::GET_CRED_DEF => (Result::Content(data), String::from("CRED_DEF")),
+            constants::GET_SCHEMA => (Result::Content(data), String::from("SCHEMA")),
+            constants::GET_REVOC_REG_DEF => (Result::Content(data), String::from("REVOC_REG_DEF")),
+            constants::GET_REVOC_REG_DELTA => {
+                (Result::Content(data), String::from("REVOC_REG_DELTA"))
+            }
+            _ => (Result::Content(data), String::from("UNKOWN")),
         };
 
         let metadata = ContentMetadata {
             node_response: serde_json::from_str(&ledger_data).unwrap(),
+            object_type,
         };
 
         let result_with_metadata = (result, metadata);
