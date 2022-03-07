@@ -189,24 +189,59 @@ fn build_request(did: &DidUrl, builder: &RequestBuilder) -> DidIndyResult<Prepar
                 .unwrap(),
             ),
             LedgerObject::RevRegEntry(rev_reg_entry) => {
-                let timestamp = parse_or_now(did.query.get(&QueryParameter::VersionTime))?;
+                // If From or To parameters, return RevRegDelta request
+                if did.query.contains_key(&QueryParameter::From)
+                    || did.query.contains_key(&QueryParameter::To)
+                {
+                    let mut from: Option<i64> = None;
+                    if did.query.contains_key(&QueryParameter::From) {
+                        from = did
+                            .query
+                            .get(&QueryParameter::From)
+                            .and_then(|d| DateTime::parse_from_rfc3339(d).ok())
+                            .and_then(|d| Some(d.timestamp()));
+                    }
 
-                builder.build_get_revoc_reg_request(
-                    None,
-                    &RevocationRegistryId::from_str(
-                        format!(
-                            "{}:4:{}:3:CL:{}:{}:CL_ACCUM:{}",
-                            &did.id,
-                            &did.id,
-                            rev_reg_entry.schema_seq_no,
-                            rev_reg_entry.claim_def_name,
-                            rev_reg_entry.tag
+                    let to = parse_or_now(did.query.get(&QueryParameter::To))?;
+
+                    builder.build_get_revoc_reg_delta_request(
+                        None,
+                        &RevocationRegistryId::from_str(
+                            format!(
+                                "{}:4:{}:3:CL:{}:{}:CL_ACCUM:{}",
+                                &did.id,
+                                &did.id,
+                                rev_reg_entry.schema_seq_no,
+                                rev_reg_entry.claim_def_name,
+                                rev_reg_entry.tag
+                            )
+                            .as_str(),
                         )
-                        .as_str(),
+                        .unwrap(),
+                        from,
+                        to,
                     )
-                    .unwrap(),
-                    timestamp,
-                )
+                // Else return RevRegEntry request
+                } else {
+                    let timestamp = parse_or_now(did.query.get(&QueryParameter::VersionTime))?;
+
+                    builder.build_get_revoc_reg_request(
+                        None,
+                        &RevocationRegistryId::from_str(
+                            format!(
+                                "{}:4:{}:3:CL:{}:{}:CL_ACCUM:{}",
+                                &did.id,
+                                &did.id,
+                                rev_reg_entry.schema_seq_no,
+                                rev_reg_entry.claim_def_name,
+                                rev_reg_entry.tag
+                            )
+                            .as_str(),
+                        )
+                        .unwrap(),
+                        timestamp,
+                    )
+                }
             }
             LedgerObject::RevRegDelta(rev_reg_delta) => {
                 let mut from: Option<i64> = None;
@@ -366,17 +401,18 @@ mod tests {
     fn build_get_revoc_reg_delta_request_with_from_to(request_builder: RequestBuilder) {
         let from_as_str = "2019-12-20T19:17:47Z";
         let to_as_str = "2020-12-20T19:17:47Z";
-        let did_url_as_str = format!("did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_DELTA/104/revocable/a4e25e54?from={}&to={}",from_as_str, to_as_str);
+        let did_url_as_str = format!("did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_ENTRY/104/revocable/a4e25e54?from={}&to={}",from_as_str, to_as_str);
         let did_url = DidUrl::from_str(&did_url_as_str).unwrap();
         let request = build_request(&did_url, &request_builder).unwrap();
         assert_eq!(request.txn_type, constants::GET_REVOC_REG_DELTA);
     }
 
+
     #[rstest]
     fn build_get_revoc_reg_delta_request_with_from_only(request_builder: RequestBuilder) {
         let now = chrono::Utc::now().timestamp();
         let from_as_str = "2019-12-20T19:17:47Z";
-        let did_url_as_str = format!("did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_DELTA/104/revocable/a4e25e54?from={}",from_as_str);
+        let did_url_as_str = format!("did:indy:idunion:Dk1fRRTtNazyMuK2cr64wp/anoncreds/v0/REV_REG_ENTRY/104/revocable/a4e25e54?from={}",from_as_str);
         let did_url = DidUrl::from_str(&did_url_as_str).unwrap();
         let request = build_request(&did_url, &request_builder).unwrap();
 
