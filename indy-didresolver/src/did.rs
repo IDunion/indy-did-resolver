@@ -7,10 +7,11 @@ use urlencoding::decode;
 use std::collections::HashMap;
 
 // Patterns to build regular expressions for ledger objects
-static DID_INDY_PREFIX: &str= "did:indy";
+static DID_INDY_PREFIX: &str = "did:indy";
 static NAMESPACE_PATTERN: &str = "((?:[a-z0-9_-]+:?){1,2})";
 // uses base58 alphabet
-static INDY_UNQUALIFIED_DID_PATTERN: &str = "([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{21,22})";
+static INDY_UNQUALIFIED_DID_PATTERN: &str =
+    "([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{21,22})";
 static OBJECT_FAMILY_PATTERN: &str = "([a-z]*)";
 static OBJECT_FAMILY_VERSION_PATTERN: &str = "([a-zA-Z0-9]*)";
 
@@ -265,8 +266,14 @@ pub struct DidUrl {
 
 impl DidUrl {
     pub fn from_str(input: &str) -> DidIndyResult<DidUrl> {
-        
-        let did_regex = Regex::new(format!(r"{}:{}:{}([^\?]+)?(?:\?(.+))?$",DID_INDY_PREFIX, NAMESPACE_PATTERN, INDY_UNQUALIFIED_DID_PATTERN).as_str()).unwrap();
+        let did_regex = Regex::new(
+            format!(
+                r"{}:{}:{}([^\?]+)?(?:\?(.+))?$",
+                DID_INDY_PREFIX, NAMESPACE_PATTERN, INDY_UNQUALIFIED_DID_PATTERN
+            )
+            .as_str(),
+        )
+        .unwrap();
 
         let url = Url::parse(input).map_err(|_| DidIndyError::InvalidDidUrl)?;
         let mut query_pairs: HashMap<QueryParameter, String> = HashMap::new();
@@ -284,7 +291,9 @@ impl DidUrl {
                 let did = DidUrl {
                     namespace: cap.get(1).unwrap().as_str().to_string(),
                     id: DidValue::new(cap.get(2).unwrap().as_str(), Option::None),
-                    path: cap.get(3).and_then(|p| Some(decode(p.as_str()).unwrap().to_string())),
+                    path: cap
+                        .get(3)
+                        .and_then(|p| Some(decode(p.as_str()).unwrap().to_string())),
                     query: query_pairs,
                     url: input.to_string(),
                 };

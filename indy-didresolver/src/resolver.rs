@@ -17,7 +17,7 @@ use indy_vdr::ledger::RequestBuilder;
 use indy_vdr::pool::helpers::perform_ledger_request;
 use indy_vdr::pool::{Pool, PreparedRequest, RequestResult, TimingResult};
 use indy_vdr::utils::did::DidValue;
-use log::{error};
+use log::error;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]

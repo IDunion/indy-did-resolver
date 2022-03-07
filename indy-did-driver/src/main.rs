@@ -7,19 +7,15 @@ use indy_vdr::pool::{helpers::perform_refresh, PoolBuilder, PoolTransactions, Sh
 use regex::Regex;
 use rouille::Response;
 
+use clap::Parser;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use clap::Parser;
 #[macro_use]
 extern crate log;
 
 static POOL_SIZE: Option<usize> = Some(32);
 type Resolvers = HashMap<String, Resolver<SharedPool>>;
-
-//did:indy:idunion:BDrEcHc8Tb4Lb2VyQZWEDE
-//did:indy:eesdi:H1iHEynabfar9mp4uprW6W
-
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -31,10 +27,18 @@ pub struct Args {
     #[clap(short = 's', long = "source", default_value = "")]
     source: String,
     /// github repository for registered networks
-    #[clap(short = 'n', long = "github-network", default_value = "https://github.com/domwoe/networks")]
+    #[clap(
+        short = 'n',
+        long = "github-network",
+        default_value = "https://github.com/domwoe/networks"
+    )]
     github_networks: String,
     /// Pool transaction genesis filename
-    #[clap(short = 'f', long = "genesis-filename", default_value = "pool_transactions_genesis.json")]
+    #[clap(
+        short = 'f',
+        long = "genesis-filename",
+        default_value = "pool_transactions_genesis.json"
+    )]
     genesis_filename: String,
 }
 
@@ -57,7 +61,7 @@ fn main() {
             let did = cap.get(1).unwrap().as_str();
 
             match process_request(did, &resolvers) {
-                Ok(result) =>  {
+                Ok(result) => {
                     info!("Serving for {}", &url);
                     debug!("Serving DID Doc: {:?}", result);
                     Response::text(result)
@@ -112,13 +116,17 @@ fn init_resolvers(args: Args) -> Resolvers {
                             namespace.to_str().unwrap(),
                             sub_namespace.to_str().unwrap()
                         ),
-                        PoolTransactions::from_json_file(sub_entry_path.join(args.genesis_filename.as_str()))
-                            .unwrap(),
+                        PoolTransactions::from_json_file(
+                            sub_entry_path.join(args.genesis_filename.as_str()),
+                        )
+                        .unwrap(),
                     ),
                     None => (
                         String::from(namespace.to_str().unwrap()),
-                        PoolTransactions::from_json_file(entry.path().join(args.genesis_filename.as_str()))
-                            .unwrap(),
+                        PoolTransactions::from_json_file(
+                            entry.path().join(args.genesis_filename.as_str()),
+                        )
+                        .unwrap(),
                     ),
                 };
                 debug!("Initializing pool for {}", ledger_prefix);
