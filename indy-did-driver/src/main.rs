@@ -1,8 +1,9 @@
+use futures_executor::block_on;
 use git2::Repository;
 use indy_didresolver::did::DidUrl;
 use indy_didresolver::error::{DidIndyError, DidIndyResult};
 use indy_didresolver::resolver::Resolver;
-use indy_vdr::pool::{PoolBuilder, PoolTransactions, SharedPool};
+use indy_vdr::pool::{helpers::perform_refresh, PoolBuilder, PoolTransactions, SharedPool};
 use regex::Regex;
 use rouille::Response;
 
@@ -75,7 +76,7 @@ fn init_resolvers(source: &str) -> Resolvers {
                     None
                 };
 
-                let (ledger_prefix, txns) = match sub_namespace {
+                let (ledger_prefix, genesis_txns) = match sub_namespace {
                     Some(sub_namespace) => (
                         format!(
                             "{}:{}",
@@ -92,8 +93,26 @@ fn init_resolvers(source: &str) -> Resolvers {
                     ),
                 };
 
-                let pool_builder = PoolBuilder::default().transactions(txns).unwrap();
-                let pool = pool_builder.into_shared().unwrap();
+                let pool_builder = PoolBuilder::default()
+                    .transactions(genesis_txns.clone())
+                    .unwrap();
+                let mut pool = pool_builder.into_shared().unwrap();
+
+                // Refresh pool to get current validator set
+                let (txns, _timing) = block_on(perform_refresh(&pool)).unwrap();
+
+                pool = if let Some(txns) = txns {
+                    let builder = {
+                        let mut pool_txns = genesis_txns;
+                        pool_txns.extend_from_json(&txns).unwrap();
+                        PoolBuilder::default()
+                            .transactions(pool_txns.clone())
+                            .unwrap()
+                    };
+                    builder.into_shared().unwrap()
+                } else {
+                    pool
+                };
 
                 resolvers.insert(ledger_prefix, Resolver::new(pool));
             }
