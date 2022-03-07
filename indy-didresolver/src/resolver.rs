@@ -243,6 +243,7 @@ fn build_request(did: &DidUrl, builder: &RequestBuilder) -> DidIndyResult<Prepar
                     )
                 }
             }
+            // This path is deprecated. Deltas can be retrieved through RevRegEntry
             LedgerObject::RevRegDelta(rev_reg_delta) => {
                 let mut from: Option<i64> = None;
                 if did.query.contains_key(&QueryParameter::From) {
