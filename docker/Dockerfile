@@ -29,6 +29,7 @@ COPY --from=builder /app/target/release/indy-did-driver /app/
 COPY --from=builder /app/licenses.html /app/
 
 RUN groupadd runner && useradd -r -g runner runner
+RUN chown -R runner:runner /app
 USER runner
 
 EXPOSE 8080

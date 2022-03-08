@@ -18,7 +18,7 @@ Logging can be enabled using the environment variable`RUST_LOG`, e.g. `RUST_LOG=
 The driver can be reached via HTTP, e.g.  curl http://localhost:8080/1.0/identifiers/<did>
 
 ### CLI options
-`
+```
     -f, --genesis-filename <GENESIS_FILENAME>
             Pool transaction genesis filename [default: pool_transactions_genesis.json]
 
@@ -37,5 +37,16 @@ The driver can be reached via HTTP, e.g.  curl http://localhost:8080/1.0/identif
 
     -V, --version
             Print version information
-`
+```
+### Local development
 
+The resolver can also be configured to resolve local/custom indy networks for development purposes, e.g. [von-network](https://github.com/bcgov/von-network).
+Create a folder structure like the following:
+
+```
+networks/
+   └──local/
+         └──pool_transactions_genesis.json
+
+```
+Start the indy-did-driver with the option `-s <path/to/networks>` and resolve via `did:indy:local:<DID>`
