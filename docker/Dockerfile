@@ -25,11 +25,11 @@ USER root
 RUN apt-get update && apt-get install ca-certificates -y && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/indy-did-driver /app/
-COPY --from=builder /app/indy-did-driver/genesis-files /app/genesis-files
 
 COPY --from=builder /app/licenses.html /app/
 
 RUN groupadd runner && useradd -r -g runner runner
+RUN chown -R runner:runner /app
 USER runner
 
 EXPOSE 8080
