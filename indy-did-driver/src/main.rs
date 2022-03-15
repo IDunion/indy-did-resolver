@@ -1,9 +1,9 @@
 use futures_executor::block_on;
 use git2::Repository;
-use indy_didresolver::did::DidUrl;
-use indy_didresolver::error::{DidIndyError, DidIndyResult};
-use indy_didresolver::resolver::Resolver;
+use indy_vdr::common::error::prelude::*;
 use indy_vdr::pool::{helpers::perform_refresh, PoolBuilder, PoolTransactions, SharedPool};
+use indy_vdr::resolver::did::DidUrl;
+use indy_vdr::resolver::PoolResolver as Resolver;
 use regex::Regex;
 use rouille::Response;
 
@@ -99,7 +99,9 @@ fn init_resolvers(args: Args) -> Resolvers {
     for entry in entries {
         let entry = entry.unwrap();
         // filter hidden directories starting with "."
-        if !entry.file_name().to_str().unwrap().starts_with(".") && entry.metadata().unwrap().is_dir() {
+        if !entry.file_name().to_str().unwrap().starts_with(".")
+            && entry.metadata().unwrap().is_dir()
+        {
             let namespace = entry.path().file_name().unwrap().to_owned();
             let sub_entries = fs::read_dir(entry.path()).unwrap();
             for sub_entry in sub_entries {
@@ -162,13 +164,13 @@ fn init_resolvers(args: Args) -> Resolvers {
     resolvers
 }
 
-fn process_request(request: &str, resolvers: &Resolvers) -> DidIndyResult<String> {
+fn process_request(request: &str, resolvers: &Resolvers) -> VdrResult<String> {
     let did = DidUrl::from_str(request)?;
     let resolver = if let Some(resolver) = resolvers.get(&did.namespace) {
         resolver
     } else {
         error!("Requested Indy Namespace \"{}\" unknown", &did.namespace);
-        return Err(DidIndyError::NamespaceNotSupported);
+        return Err(err_msg(VdrErrorKind::Resolver, "Unkown namespace"));
     };
 
     if did.path.is_none() {

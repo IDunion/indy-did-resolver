@@ -1,8 +1,7 @@
 [workspace]
 
 members = [
-    "indy-did-driver",
-    "indy-didresolver",
+    "indy-did-driver"
 ]
 
 [profile.release]
