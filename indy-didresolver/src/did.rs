@@ -239,6 +239,7 @@ impl LedgerObject {
                                 "REV_REG_ENTRY" => Ok(LedgerObject::RevRegEntry(RevReg::from_str(
                                     ledger_object_type_specific_str,
                                 )?)),
+                                // This path is deprecated. Deltas can be retrieved through RevRegEntry
                                 "REV_REG_DELTA" => Ok(LedgerObject::RevRegDelta(RevReg::from_str(
                                     ledger_object_type_specific_str,
                                 )?)),
