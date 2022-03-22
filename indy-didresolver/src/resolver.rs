@@ -408,7 +408,6 @@ mod tests {
         assert_eq!(request.txn_type, constants::GET_REVOC_REG_DELTA);
     }
 
-
     #[rstest]
     fn build_get_revoc_reg_delta_request_with_from_only(request_builder: RequestBuilder) {
         let now = chrono::Utc::now().timestamp();
