@@ -10,7 +10,7 @@ license = "Apache-2.0"
 [dependencies]
 futures-executor = "0.3.17"
 git2 = "0.14.2"
-indy-vdr = { git = "https://github.com/domwoe/indy-vdr", branch = "ffi-resolver" }
+indy-vdr = { git = "https://github.com/hyperledger/indy-vdr", branch = "did-indy" }
 serde = "1.0"
 serde_json = "1.0"
 rouille = "3.5.0"

@@ -60,7 +60,7 @@ fn main() {
         if let Some(cap) = captures {
             let did = cap.get(1).unwrap().as_str();
 
-            match process_request(did, &resolvers) {
+            match block_on(process_request(did, &resolvers)) {
                 Ok(result) => {
                     info!("Serving for {}", &url);
                     debug!("Serving DID Doc: {:?}", result);
@@ -164,7 +164,7 @@ fn init_resolvers(args: Args) -> Resolvers {
     resolvers
 }
 
-fn process_request(request: &str, resolvers: &Resolvers) -> VdrResult<String> {
+async fn process_request(request: &str, resolvers: &Resolvers) -> VdrResult<String> {
     let did = DidUrl::from_str(request)?;
     let resolver = if let Some(resolver) = resolvers.get(&did.namespace) {
         resolver
@@ -174,8 +174,8 @@ fn process_request(request: &str, resolvers: &Resolvers) -> VdrResult<String> {
     };
 
     if did.path.is_none() {
-        resolver.resolve(request)
+        resolver.resolve(request).await
     } else {
-        resolver.dereference(request)
+        resolver.dereference(request).await
     }
 }
