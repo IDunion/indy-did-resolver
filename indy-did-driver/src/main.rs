@@ -81,8 +81,8 @@ fn main() {
 fn init_resolvers(args: Args) -> Resolvers {
     let mut resolvers: Resolvers = HashMap::new();
     let source = args.source;
-    let path = if source == "github" || source.is_empty() {
-        info!("Obtaining network information from github");
+    let mut path = if source == "github" || source.is_empty() {
+        info!("Obtaining network information from github: {}", args.github_networks.as_str());
         // Delete folder if it exists and reclone repo
         fs::remove_dir_all("github").ok();
         let repo = Repository::clone(args.github_networks.as_str(), "github")
@@ -95,6 +95,13 @@ fn init_resolvers(args: Args) -> Resolvers {
         PathBuf::from(source)
     };
 
+    // Change path to networks folder if it exists
+    let networks_path = path.join("networks");
+    if networks_path.exists() {
+        debug!("'networks' folder exists, defaulting to it.");
+        path = networks_path.to_owned()
+    }
+    // Iterate over entries in folder
     let entries = fs::read_dir(path).expect("Could not read path");
     for entry in entries {
         let entry = entry.unwrap();
