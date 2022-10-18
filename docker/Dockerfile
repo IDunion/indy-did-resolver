@@ -1,4 +1,4 @@
-ARG RUST_VER=1.58
+ARG RUST_VER=1.63
 
 FROM rust:${RUST_VER}-buster as builder
 USER root

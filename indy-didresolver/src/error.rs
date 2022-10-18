@@ -31,6 +31,10 @@ pub enum DidIndyError {
     NotImplemented,
     #[error("VDR error")]
     VdrError(#[from] VdrError),
+    #[error("Base58 Parsing error")]
+    FromBase58Error(#[from] bs58::decode::Error),
+    #[error("Unexpected Key Format")]
+    UnexpectedKeyFormat
 }
 
 // impl fmt::Display for DidIndyError {

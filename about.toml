@@ -3,5 +3,6 @@ accepted = [
     "MIT",
     "CC0-1.0",
     "BSD-3-Clause",
-    "Zlib"
+    "Zlib",
+    "Unicode-DFS-2016"
 ]
